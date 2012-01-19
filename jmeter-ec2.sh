@@ -220,6 +220,7 @@ echo "processing results..."
 for (( i=0; i<$INSTANCE_COUNT; i++ ))
 do
     cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl # removes the individual results from each host - might be useful to some people to keep these files?
 done
 sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
