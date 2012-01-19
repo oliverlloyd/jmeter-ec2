@@ -5,7 +5,7 @@ INSTANCE_COUNT=$2
 DATETIME=$(date "+%s")
 LOCAL_HOME="/home/ubuntu"
 REMOTE_HOME="/tmp"
-AMI_ID="ami-cde7dab9"
+AMI_ID="ami-c787bbb3"
 
 cd $EC2_HOME
 
