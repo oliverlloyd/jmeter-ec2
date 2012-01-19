@@ -28,7 +28,7 @@ done <<<"$instanceids"
 
 # get the host names or each instance
 hosts=$(ec2-describe-instances --filter "instance-state-name=running"| awk '/'"$AMI_ID"'/ {print $4}')
-echo $hosts
+
 
 # Install JAVA JRE & JMeter 2.5.1
 while read host
@@ -46,6 +46,7 @@ do
     echo "ready"
 done <<< "$hosts"
 
+
 # scp the test files onto each host  
 while read host
 do
@@ -56,8 +57,9 @@ do
     scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT/data root@$host:$REMOTE_HOME/$PROJECT
     scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT/jmx root@$host:$REMOTE_HOME/$PROJECT
     
-    # scp a copy of the local jmeter.properties file - temporary, just while I sort out the AMI
-    scp -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem /Applications/jakarta-jmeter-2.5.1/bin/jmeter.properties root@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
+    # download a copy of the custom jmeter.properties & jmeter.sh files from GitHub
+    ssh -n -q -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://github.com/oliverlloyd/jmeter-ec2/blob/master/jmeter.properties"
+    ssh -n -q -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh https://github.com/oliverlloyd/jmeter-ec2/blob/master/jmeter.sh
     done <<<"$hosts"
 echo ""
 
@@ -76,11 +78,7 @@ do
 done <<<"$hosts"
 
 
-#
-# at this point we need to write the test output to the screen and then check to see if the test has complete...
-#
-
-# set results variables
+# read the results data and print updates to the screen
 count_total=0
 avg_total=0
 count_overallhosts=0
