@@ -19,6 +19,9 @@ Pre-requisits
 
 Execution Instructions (for Linux based OSs - 32 & 64bit)
 1. Create a project directory on your machine. For example: '/home/username/someproject'.
+    a) Under the root directory, created three directories named 'jmx', 'resutls' and 'data. For example, like this:
+        /home/username/someproject
+        INSERT EXAMPLE HERE...
 
 2. Download all files from https://github.com/oliverlloyd/jmeter-ec2.git and place them in /home/username/someproject.
 
