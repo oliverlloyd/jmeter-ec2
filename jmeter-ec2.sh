@@ -52,8 +52,8 @@ while read host
 do
     echo
     echo "copying files to $host..."
-    ssh -n -o StrictHostKeyChecking=no -q -i ~/.ec2/olloyd-eu.pem root@$host mkdir $REMOTE_HOME/$PROJECT
-    scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT root@$host:$REMOTE_HOME/$PROJECT
+    # copies the testfiles directory but not the results directory as this is not required
+    scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT/testfiles root@$host:$REMOTE_HOME
     #
     # download a copy of the custom jmeter.properties & jmeter.sh files from GitHub
     #
@@ -63,6 +63,7 @@ do
     # -- jmeter.properties --
     # jmeter.save.saveservice.output_format=csv - more efficient
     # jmeter.save.saveservice.hostname=true - potentially useful in this context but not required
+    # summariser.interval=15 - this value should be less than the sleep statement in the main results processing loop further below
     #
     # -- jmeter.sh --
     # HEAP="-Xms2048m -Xmx2048m" - this is assuming the instance chosen has sufficient memory, more than likely the case
@@ -79,12 +80,14 @@ counter=0
 while read host
 do
     echo "running jmeter on $host..."
-    (ssh -n -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host \
-        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n -t $REMOTE_HOME/$PROJECT/jmx/$PROJECT.jmx \
-        -Jtest.root=$REMOTE_HOME \
-        -l $REMOTE_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl \
-        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out) &
-    counter=$((counter+1))
+    (ssh -n -o StrictHostKeyChecking=no \
+        -i ~/.ec2/olloyd-eu.pem root@$host \                 # ec2 key file
+        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter from where it was just installed
+        -t $REMOTE_HOME/testfiles/jmx/$PROJECT.jmx \         # run the jmx file that was uploaded
+        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
+        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \    # write results to the root of remote home
+        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out) & # pass the output of the Generate Summary Results listener back a temp file on the local machine
+    counter=$((counter+1))                                   # a counter was used here in place of $host just to keep things readable
 done <<<"$hosts"
 
 
@@ -97,9 +100,9 @@ i=1
 firstmodmatch="TRUE"
 
 # check to see if the test is complete
-res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
+res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
 
-while [ $res != $INSTANCE_COUNT ]; # test not complete
+while [ $res != $INSTANCE_COUNT ]; # test not complete (count of matches for 'end of run' not equal to count of hosts running the test)
 do
     # gather results data and write to screen for each host
     while read host
@@ -162,7 +165,7 @@ do
     fi
     i=$(( $i + 1))
     
-    # this value should be greater than the Generate Summary Results interval
+    # this value should be greater than the Generate Summary Results interval set in jmeter.properties (summariser.interval=15)
     sleep 16;
     
     # we rely on JM to keep track of overall test totals (via Results =) so we only need keep count of values over multiple instances
@@ -172,12 +175,12 @@ do
     count_overallhosts=0
     avg_overallhosts=0
     
-    # check to see if the test is complete
+    # check again to see if the test is complete (inside the loop)
     res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
 done
 
 
-# write a final summary to the screen
+# now the test is complete write a final summary to the screen
 while read host
 do
     count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
@@ -201,7 +204,7 @@ counter=0
 while read host
 do
     echo "downloading results from $host..."
-    scp -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host:$REMOTE_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
+    scp -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/testfiles/results
     counter=$((counter+1))
 done <<<"$hosts"
 echo ""
@@ -224,5 +227,6 @@ do
 done
 sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/testfiles/results
 echo ""
 echo "complete"
