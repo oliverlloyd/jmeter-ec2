@@ -72,7 +72,7 @@ TENURING="-XX:MaxTenuringThreshold=2"
 
 # Avoid the RMI-induced Full GCs to run too frequently -- once every ten minutes
 # should be more than enough:
-RMIGC="-Dsun.rmi.dgc.client.gcInterval=1800000 -Dsun.rmi.dgc.server.gcInterval=1800000"
+RMIGC="-Dsun.rmi.dgc.client.gcInterval=600000 -Dsun.rmi.dgc.server.gcInterval=600000"
 
 # PermSize is a scam. Leave it like this:
 PERM="-XX:PermSize=64m -XX:MaxPermSize=64m"
