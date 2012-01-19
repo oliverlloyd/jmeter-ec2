@@ -53,11 +53,21 @@ do
     echo
     echo "copying files to $host..."
     ssh -n -o StrictHostKeyChecking=no -q -i ~/.ec2/olloyd-eu.pem root@$host mkdir $REMOTE_HOME/$PROJECT
-    ssh -n -o StrictHostKeyChecking=no -q -i ~/.ec2/olloyd-eu.pem root@$host mkdir $REMOTE_HOME/$PROJECT/results
-    scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT/data root@$host:$REMOTE_HOME/$PROJECT
-    scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT/jmx root@$host:$REMOTE_HOME/$PROJECT
-    
+    scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT root@$host:$REMOTE_HOME/$PROJECT
+    #
     # download a copy of the custom jmeter.properties & jmeter.sh files from GitHub
+    #
+    # ****** Note. This is only required if the default values are not suitable. *****
+    #
+    # The files referenced below contain the following amendments from the default:
+    # -- jmeter.properties --
+    # jmeter.save.saveservice.output_format=csv - more efficient
+    # jmeter.save.saveservice.hostname=true - potentially useful in this context but not required
+    #
+    # -- jmeter.sh --
+    # HEAP="-Xms2048m -Xmx2048m" - this is assuming the instance chosen has sufficient memory, more than likely the case
+    # NEW="-XX:NewSize=256m -XX:MaxNewSize=256m" - arguably overkill
+    # 
     ssh -n -q -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://github.com/oliverlloyd/jmeter-ec2/blob/master/jmeter.properties"
     ssh -n -q -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh https://github.com/oliverlloyd/jmeter-ec2/blob/master/jmeter.sh
     done <<<"$hosts"
@@ -72,8 +82,8 @@ do
     (ssh -n -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host \
         $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n -t $REMOTE_HOME/$PROJECT/jmx/$PROJECT.jmx \
         -Jtest.root=$REMOTE_HOME \
-        -l $REMOTE_HOME/$PROJECT/results/$PROJECT-$DATETIME-$counter.jtl \
-        > $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out) &
+        -l $REMOTE_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl \
+        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out) &
     counter=$((counter+1))
 done <<<"$hosts"
 
@@ -87,28 +97,29 @@ i=1
 firstmodmatch="TRUE"
 
 # check to see if the test is complete
-res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/results/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
+res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
 
 while [ $res != $INSTANCE_COUNT ]; # test not complete
 do
     # gather results data and write to screen for each host
     while read host
     do
-        check=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $1}') # make sure the test has really started to write results to the file
+        check=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $1}') # make sure the test has really started to write results to the file
         if [[ -n "$check" ]] ; then # not null
             if [ $check == "Generate" ] ; then # test has begun
-                screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results +" | tail -1)
+                screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1)
                 echo "$screenupdate | host: $host" # write results to screen
-                count=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
-                avg=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $11}') # pull out current avg
-                #tps=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $9}') # pull out current tps
-                
-                count_total=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
-                avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
-                if [[ -n "$count_total" ]] ; then # not null (bc bombs on nulls)
-                    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the value from other hosts
+                # get the latest values
+                count=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
+                avg=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $11}') # pull out current avg
+                #tps=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $9}') # pull out current tps
+                # get the latest summary values
+                count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
+                avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
+                if [[ -n "$count_total" ]] ; then # not null (bc bombs on nulls) # redundant if - remove and retest
+                    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
                 fi
-                if [[ -n "$avg_total" ]] ; then # not null
+                if [[ -n "$avg_total" ]] ; then # not null # redundant if - remove and retest
                     avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
                 fi
             fi
@@ -129,7 +140,7 @@ do
             wait=0
             while read host
             do
-                result_count=$(grep -c "Results =" $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out)
+                result_count=$(grep -c "Results =" $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out)
                 if [ $result_count = 0 ] ; then
                     wait=1
                 fi
@@ -141,7 +152,7 @@ do
                 echo "-- Summary --"
                 while read host
                 do
-                    screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results =" | tail -1)
+                    screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1)
                     echo "$screenupdate | host: $host" # write results to screen
                 done <<< "$hosts"
                 echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg.: $avg_overallhosts"
@@ -162,15 +173,15 @@ do
     avg_overallhosts=0
     
     # check to see if the test is complete
-    res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/results/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
+    res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
 done
 
 
 # write a final summary to the screen
 while read host
 do
-    count_total=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
-    avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/results/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
+    count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
+    avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
     count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the value from other hosts
     avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
 done <<<"$hosts" # next host
@@ -182,7 +193,7 @@ echo
 
 
 # tidy up working files
-rm $LOCAL_HOME/$PROJECT/results/$DATETIME*stdout.out
+rm $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out
 
 
 # download the results
@@ -190,7 +201,7 @@ counter=0
 while read host
 do
     echo "downloading results from $host..."
-    scp -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host:$REMOTE_HOME/$PROJECT/results/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/results/
+    scp -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host:$REMOTE_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
     counter=$((counter+1))
 done <<<"$hosts"
 echo ""
@@ -208,9 +219,9 @@ done <<<"$instanceids"
 echo "processing results..."
 for (( i=0; i<$INSTANCE_COUNT; i++ ))
 do
-    cat $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-temp.jtl
+    cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
 done
-sort $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-complete.jtl
-rm $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-temp.jtl
+sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
+rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
 echo ""
 echo "complete"
