@@ -29,18 +29,21 @@ done <<<"$instanceids"
 hosts=$(ec2-describe-instances --filter "instance-state-name=running"| awk '/'"$AMI_ID"'/ {print $4}')
 
 
-# Install JAVA JRE & JMeter 2.5.1
+# Install JAVA JRE & JMeter 2.5.1 (Ideally this would run in parallel for each host - how to check for completion?)
 while read host
 do
     echo -n "preparing $host..."
     # install java
     echo -n "installing java..."
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/oliverlloyd/jre-6u30-linux-i586-rpm.bin"
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "$REMOTE_HOME/jre-6u30-linux-i586-rpm.bin >> $REMOTE_DIR/jre-6u30-linux-i586-rpm"
+    ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
+    ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
+    # sudo is sometimes required where the user for the AMI is not root
+    # For security some servers (inc. Amazon's basic AMIs) do not allow you to send a sudo command over ssh,
+    # -t -t seems to work around this but the command complains about 'Inappropriate ioctl for device'
+    ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "sudo $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin" > /dev/null
     # install jmeter
     echo -n "installing jmeter..."
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz https://s3.amazonaws.com/oliverlloyd/jakarta-jmeter-2.5.1.tgz"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/jakarta-jmeter-2.5.1.tgz"
     ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
     echo "software installed"
 done <<< "$hosts"
@@ -50,12 +53,12 @@ done <<< "$hosts"
 while read host
 do
     echo
-    echo "copying files to $host..."
+    echo -n "copying files to $host..."
     # copies the data & jmx directories but not the results directory as this is not required
     ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT
-    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/testfiles $USER@$host:$REMOTE_HOME/$PROJECT
+    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/testfiles $USER@$host:$REMOTE_HOME/$PROJECT
     #
-    # download a copy of the custom jmeter.properties & jmeter.sh files from GitHub
+    # Upload a copy of the custom jmeter.properties & jmeter.sh files from LOCAL_HOME
     #
     # ****** Note. This is only required if the default values are not suitable. *****
     #
@@ -68,9 +71,10 @@ do
     # -- jmeter.sh --
     # HEAP="-Xms2048m -Xmx2048m" - this is assuming the instance chosen has sufficient memory, more than likely the case
     # NEW="-XX:NewSize=256m -XX:MaxNewSize=256m" - arguably overkill
-    # 
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter.properties"
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter"
+    #
+    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/jmeter.properties $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
+    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/jmeter $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
+    echo "complete"
 done <<<"$hosts"
 echo ""
 
@@ -78,7 +82,8 @@ echo ""
 #
 # run jmeter test plan
 #
-#    ssh -n -o StrictHostKeyChecking=no \
+#    ssh -nq -o UserKnownHostsFile=/dev/null \
+#         -o StrictHostKeyChecking=no \
 #        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \             # ec2 key file
 #        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
 #        -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \# run the jmx file that was uploaded
@@ -90,7 +95,8 @@ counter=0
 while read host
 do
     echo "running jmeter on $host..."
-    (ssh -n -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
+    (ssh -nq -o StrictHostKeyChecking=no \
+    -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
     -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \
     -Jtest.root=$REMOTE_HOME \
@@ -228,7 +234,6 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 # display final results
 echo
 echo "OVERALL RESULTS: count: $count_overallhosts, avg.: $avg_overallhosts, tps: $tps_overallhosts, errors: $errors_overallhosts"
-echo
 echo "test finished"
 echo
 
@@ -241,9 +246,10 @@ echo
 counter=0
 while read host
 do
-    echo "downloading results from $host..."
-    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
+    echo -n "downloading results from $host..."
+    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
     counter=$((counter+1))
+    echo "$LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl complete"
 done <<<"$hosts"
 echo ""
 
@@ -257,7 +263,7 @@ done <<<"$instanceids"
 
 
 # process the files into one jtl results file
-echo "processing results..."
+echo -n "processing results..."
 for (( i=0; i<$INSTANCE_COUNT; i++ ))
 do
     cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
@@ -266,5 +272,7 @@ done
 sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
 mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
-echo ""
 echo "complete"
+echo
+echo "jmeter-ec2 complete"
+echo
