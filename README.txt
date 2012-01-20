@@ -18,12 +18,16 @@ Pre-requisits
 
 
 Execution Instructions (for Linux based OSs - 32 & 64bit)
-1. Create a project directory on your machine. For example: '/home/username/someproject'.
-    a) Under the root directory, created three directories named 'jmx', 'resutls' and 'data. For example, like this:
-        /home/username/someproject
-        INSERT EXAMPLE HERE...
+1. Create a project directory on your machine. For example: '/home/username/someproject'. This is the working dir for the script. Under the directory
+    just created, create three sub directories named 'jmx', 'resutls' and 'data.
+    
+    Detailed steps:
+    a) For example, create a root directory like this: mkdir /home/username/someproject
+    b) mkdir /home/username/someproject/jmx
+    c) mkdir /home/username/someproject/results
+    d) mkdir /home/username/someproject/data
 
-2. Download all files from https://github.com/oliverlloyd/jmeter-ec2.git and place them in /home/username/someproject.
+2. Download all files from https://github.com/oliverlloyd/jmeter-ec2.git and place them in the root directory (eg. /home/username/someproject).
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
     LOCAL_HOME="[Your local project directory, created above, eg. /home/username/someproject]"
@@ -32,21 +36,39 @@ Execution Instructions (for Linux based OSs - 32 & 64bit)
         This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
     AMI_ID="[A linix based AMI, eg. ami-c787bbb3]"
         This only needs to be a basic AMI, the Amazon examples work fine. Both Java and JMeter are installed by the script and are not required.
+    INSTANCE_TYPE="t1.micro"
+        This depends on the type of AMI - it must be available for the AMI used.
+    INSTANCE_SECURITYGROUP="jmeter"
+        The name of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
+    PEM_FILE="olloyd-eu"
+        Your Amazon key file - obviously must be installed locally.
+    PEM_PATH="/Users/oliver/.ec2"
+        The DIRECTORY where the Amazon PEM file is located. No trailing '/'!
+    INSTANCE_AVAILABILITYZONE="eu-west-1b"
+        Should be a valid value for where you want the instances to launch.
+    USER="ec2-user"
+        Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
         
-4. Copy your JMeter jmx file to your project directory and rename it to the same name as the directory. For example, if
-   you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx'.
+4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory.
+    For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using
+    LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
+    
+        Note. This naming convention allows the script to work seemlessly over multiple projects (so long as they are all located in the same root) but
+            it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
    
-5. Copy any data files that are required by your testplan to the same project directory.
+5. Copy any data files that are required by your testplan to the /data sub directory.
 
 6. If your testplan has any references to external files such as a CSV file then you will need to update the testplan as follows:
-    a) For each reference to an external file, replace the existing reference with '${test.root}/myproject/myfilename.csv'. For example, if you
-    had a Filename value of /home/username/someproject/data/myfile.csv you should copy the file to directory created above and replace the value
-    in the Filename field with '${test.root}/someproject/myfile.csv'
+    a) For each reference to an external file, replace the existing reference with '${test_root}/myproject/data/myfilename.csv'. For example, if you
+    had a Filename value of /home/username/someproject/csvfiles/myfile.csv you should copy the file to the /data directory created above and replace
+    the value in the Filename field with '${test_root}/someproject/data/myfile.csv'
     b) Create a new User Defined Variable at the root of the testplan called test_root with a value of ${__P(test.root,/home/username/someproject)}
-        The test.root property will default to /home/username/someproject but during execution by the jmeter-ec2 shell script it will use the value
-        specified by REMOTE_HOME n the jmeter-ec2.properties file. This is useful as it allows you to run the testplan locally and remotely
-        without making any edits.
         
+        Note. test.root (Note the use of the '.' not underscore) is passed to the testplan from the command line by the jmeter-ec2 script. The command
+            '-Jtest.root=$REMOTE_HOME' tells JMeter to use the value of $REMOTE_HOME (eg. /tmp) for this variable. Then, the test will look for the csv
+            file at /tmp/someproject/data/myfile.csv. ${__P(test.root,/home/username/someproject)} also provides a default value, '/home/username/someproject',
+            if when the testplan is executed the test.root value is not specified then the default is used instead. This allows the testplan to be run
+            locally and remotely without having to edit the testplan.
 
 7. Steps reuired for the dynamic distribution business.
 
@@ -55,8 +77,9 @@ Execution Instructions (for Linux based OSs - 32 & 64bit)
 8. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject)
 
 9. Type './jmeter-ec2 someproject 1'
-        Where 'someproject' is the name of the jmx file and '1' is the number of instances you wish to spread the test over.
+        Where 'someproject' is the name of the project directory and jmx file and '1' is the number of instances you wish to spread the test over.
         You may need to run 'chmod u+x jmeter-ec2.sh' if this file does not already have executable permissions.
+        You may need to run 'chmod u+x jmeter-ec2.properties' if this file does not already have executable permissions.
         
         
 Further details:
