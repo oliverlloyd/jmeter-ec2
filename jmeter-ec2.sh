@@ -100,6 +100,7 @@ echo ""
 #        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
 #        -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \# run the jmx file that was uploaded
 #        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
+#        -Jtest.instances=$INSTANCE_COUNT \                   # pass in to the test how many instances are being used
 #        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \    # write results to the root of remote home
 #        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out    # redirect the output from Generate Summary Results to a local temp file (later read to present real time results to screen)
 #
@@ -112,6 +113,7 @@ do
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
     -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \
     -Jtest.root=$REMOTE_HOME \
+    -Jtest.instances=$INSTANCE_COUNT \
     -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
     > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out) &
     counter=$((counter+1))
