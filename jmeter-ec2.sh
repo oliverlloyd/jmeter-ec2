@@ -79,7 +79,7 @@ echo ""
 # run jmeter test plan
 #
 #    ssh -n -o StrictHostKeyChecking=no \
-#        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \                 # ec2 key file
+#        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \             # ec2 key file
 #        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
 #        -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \# run the jmx file that was uploaded
 #        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
