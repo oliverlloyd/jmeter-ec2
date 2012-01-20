@@ -35,13 +35,13 @@ do
     echo -n "preparing $host..."
     # install java
     echo -n "installing java..."
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/oliverlloyd/jre-6u30-linux-i586-rpm.bin"
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "$REMOTE_HOME/jre-6u30-linux-i586-rpm.bin >> $REMOTE_DIR/jre-6u30-linux-i586-rpm"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/oliverlloyd/jre-6u30-linux-i586-rpm.bin"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "$REMOTE_HOME/jre-6u30-linux-i586-rpm.bin >> $REMOTE_DIR/jre-6u30-linux-i586-rpm"
     # install jmeter
     echo -n "installing jmeter..."
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz https://s3.amazonaws.com/oliverlloyd/jakarta-jmeter-2.5.1.tgz"
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz https://s3.amazonaws.com/oliverlloyd/jakarta-jmeter-2.5.1.tgz"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
     echo "software installed"
 done <<< "$hosts"
 
@@ -52,8 +52,8 @@ do
     echo
     echo "copying files to $host..."
     # copies the data & jmx directories but not the results directory as this is not required
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT
-    scp -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/testfiles $USER@$host:$REMOTE_HOME/$PROJECT
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT
+    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/testfiles $USER@$host:$REMOTE_HOME/$PROJECT
     #
     # download a copy of the custom jmeter.properties & jmeter.sh files from GitHub
     #
@@ -69,8 +69,8 @@ do
     # HEAP="-Xms2048m -Xmx2048m" - this is assuming the instance chosen has sufficient memory, more than likely the case
     # NEW="-XX:NewSize=256m -XX:MaxNewSize=256m" - arguably overkill
     # 
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter.properties"
-    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter.properties"
+    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter"
 done <<<"$hosts"
 echo ""
 
@@ -215,7 +215,7 @@ counter=0
 while read host
 do
     echo "downloading results from $host..."
-    scp -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
+    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
     counter=$((counter+1))
 done <<<"$hosts"
 echo ""
