@@ -3,16 +3,22 @@
 PROJECT=$1
 INSTANCE_COUNT=$2
 DATETIME=$(date "+%s")
+
 LOCAL_HOME="/home/ubuntu"
 REMOTE_HOME="/tmp"
-AMI_ID="ami-c787bbb3"
+AMI_ID="ami-973b06e3"
+INSTANCE_TYPE="t1.micro"
+INSTANCE_SECURITYGROUP="jmeter"
+PEM_FILE="olloud-eu"
+PEM_PATH="~/.ec2"
+INSTANCE_AVAILABILITYZONE="eu-west-1b"
 
 cd $EC2_HOME
 
 # create the instance(s) and capture the instance id(s)
 echo "launching instance(s)..."
-instanceids=$(ec2-run-instances --key olloyd-eu -t m1.small -g jmeter -n 1-$INSTANCE_COUNT --availability-zone \
-    eu-west-1b $AMI_ID | awk '/^INSTANCE/ {print $2}')
+instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_SECURITYGROUP -n 1-$INSTANCE_COUNT --availability-zone \
+    $INSTANCE_AVAILABILITYZONE $AMI_ID | awk '/^INSTANCE/ {print $2}')
 
 
 # wait for each instance to be fully operational
@@ -36,13 +42,13 @@ do
     echo -n "preparing $host..."
     # install java
     echo -n "installing java..."
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/oliverlloyd/jre-6u30-linux-i586-rpm.bin"
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "$REMOTE_HOME/jre-6u30-linux-i586-rpm.bin >> $REMOTE_DIR/jre-6u30-linux-i586-rpm"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/oliverlloyd/jre-6u30-linux-i586-rpm.bin"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "$REMOTE_HOME/jre-6u30-linux-i586-rpm.bin >> $REMOTE_DIR/jre-6u30-linux-i586-rpm"
     # install jmeter
     echo -n "installing jmeter..."
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz https://s3.amazonaws.com/oliverlloyd/jakarta-jmeter-2.5.1.tgz"
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz https://s3.amazonaws.com/oliverlloyd/jakarta-jmeter-2.5.1.tgz"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
     echo "software installed"
 done <<< "$hosts"
 
@@ -53,8 +59,8 @@ do
     echo
     echo "copying files to $host..."
     # copies the data & jmx directories but not the results directory as this is not required
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host mkdir $REMOTE_HOME/$PROJECT
-    scp -o StrictHostKeyChecking=no -r -i ~/.ec2/olloyd-eu.pem $LOCAL_HOME/$PROJECT/testfiles root@$host:$REMOTE_HOME/$PROJECT
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host mkdir $REMOTE_HOME/$PROJECT
+    scp -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/testfiles root@$host:$REMOTE_HOME/$PROJECT
     #
     # download a copy of the custom jmeter.properties & jmeter.sh files from GitHub
     #
@@ -70,8 +76,8 @@ do
     # HEAP="-Xms2048m -Xmx2048m" - this is assuming the instance chosen has sufficient memory, more than likely the case
     # NEW="-XX:NewSize=256m -XX:MaxNewSize=256m" - arguably overkill
     # 
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter.properties"
-    ssh -nq -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.properties https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter.properties"
+    ssh -nq -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter https://raw.github.com/oliverlloyd/jmeter-ec2/master/jmeter"
 done <<<"$hosts"
 echo ""
 
@@ -80,7 +86,7 @@ echo ""
 # run jmeter test plan
 #
 #    ssh -n -o StrictHostKeyChecking=no \
-#        -i ~/.ec2/olloyd-eu.pem root@$host \                 # ec2 key file
+#        -i $PEM_PATH/$PEM_FILE.pem root@$host \                 # ec2 key file
 #        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
 #        -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \# run the jmx file that was uploaded
 #        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
@@ -91,7 +97,7 @@ counter=0
 while read host
 do
     echo "running jmeter on $host..."
-    (ssh -n -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host \
+    (ssh -n -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host \
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
     -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \
     -Jtest.root=$REMOTE_HOME \
@@ -206,7 +212,7 @@ echo
 
 
 # tidy up working files
-rm $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out
+#rm $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out
 
 
 # download the results
@@ -214,7 +220,7 @@ counter=0
 while read host
 do
     echo "downloading results from $host..."
-    scp -o StrictHostKeyChecking=no -i ~/.ec2/olloyd-eu.pem root@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
+    scp -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem root@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
     counter=$((counter+1))
 done <<<"$hosts"
 echo ""
