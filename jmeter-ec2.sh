@@ -4,14 +4,7 @@ PROJECT=$1
 INSTANCE_COUNT=$2
 DATETIME=$(date "+%s")
 
-LOCAL_HOME="/home/ubuntu"
-REMOTE_HOME="/tmp"
-AMI_ID="ami-973b06e3"
-INSTANCE_TYPE="t1.micro"
-INSTANCE_SECURITYGROUP="jmeter"
-PEM_FILE="olloud-eu"
-PEM_PATH="~/.ec2"
-INSTANCE_AVAILABILITYZONE="eu-west-1b"
+. jmeter-ec2.properties
 
 cd $EC2_HOME
 
