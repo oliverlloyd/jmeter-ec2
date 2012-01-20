@@ -105,6 +105,8 @@ count_total=0
 avg_total=0
 count_overallhosts=0
 avg_overallhosts=0
+tps_overallhosts=0
+errors_overallhosts=0
 i=1
 firstmodmatch="TRUE"
 
@@ -121,27 +123,37 @@ do
             if [ $check == "Generate" ] ; then # test has begun
                 screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1)
                 echo "$screenupdate | host: $host" # write results to screen
+                
                 # get the latest values
                 count=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
                 avg=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $11}') # pull out current avg
                 tps_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $9}') # pull out current tps
-                tps=`expr "$tps_raw" : '\([^//]+\)'`
-                echo "tps_raw:$tps_raw, tps: $tps"
+                errors_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $17}') # pull out current errors
+                tps=${tps_raw%/s} # remove the trailing '/s'
+                
                 # get the latest summary values
                 count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
                 avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
-                if [[ -n "$count_total" ]] ; then # not null (bc bombs on nulls) # redundant if - remove and retest
-                    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
-                fi
-                if [[ -n "$avg_total" ]] ; then # not null # redundant if - remove and retest
-                    avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
-                fi
+                tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $9}')
+                tps_total=${tps_total_raw%/s} # remove the trailing '/s'
+                errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $17}')
+                
+                #if [[ -n "$count_total" ]] ; then # not null (bc bombs on nulls) # redundant if - remove and retest
+                #    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
+                #fi
+                #if [[ -n "$avg_total" ]] ; then # not null # redundant if - remove and retest
+                #    avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
+                #fi
+                count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
+                avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
+                tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
+                errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
             fi
         fi
     done <<<"$hosts" # next host
     
-    # calculate the average over all hosts
-    avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT;" | bc)
+    # calculate the average respone time over all hosts
+    avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
     
     # every n loops print a running summary (if each host is running)
     n=3 # could be passed in?
@@ -169,7 +181,7 @@ do
                     screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1)
                     echo "$screenupdate | host: $host" # write results to screen
                 done <<< "$hosts"
-                echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg.: $avg_overallhosts"
+                echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg.: $avg_overallhosts, tps: $tps_overallhosts, errors: $errors_overallhosts"
                 echo ""
             fi
         fi
@@ -185,22 +197,37 @@ do
     avg_total=0
     count_overallhosts=0
     avg_overallhosts=0
+    tps_overallhosts=0
+    errors_overallhosts=0
     
     # check again to see if the test is complete (inside the loop)
     res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
 done
 
 
-# now the test is complete write a final summary to the screen
+# now the test is complete calculate a final summary and write to the screen
 while read host
 do
+    # get the final summary values
     count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
     avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
-    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the value from other hosts
+    tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $9}')
+    tps_total=${tps_total_raw%/s} # remove the trailing '/s'
+    errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $17}')
+    
+    # running totals
+    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
     avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
+    tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
+    errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
 done <<<"$hosts" # next host
+
+# calculate averages over all hosts
+avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
+
+# display final results
 echo
-echo "OVERALL RESULTS: count: $count_overallhosts, avg.: $avg_overallhosts"
+echo "OVERALL RESULTS: count: $count_overallhosts, avg.: $avg_overallhosts, tps: $tps_overallhosts, errors: $errors_overallhosts"
 echo
 echo "test finished"
 echo
