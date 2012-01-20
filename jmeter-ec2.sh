@@ -251,7 +251,7 @@ echo
 
 
 # tidy up working files
-#rm $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out
+rm $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out
 
 
 # download the results
