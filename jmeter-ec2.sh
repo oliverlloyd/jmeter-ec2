@@ -35,12 +35,24 @@ do
     echo -n "preparing $host..."
     # install java
     echo -n "installing java..."
-    ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
-    ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
-    # sudo is sometimes required where the user for the AMI is not root
-    # For security some servers (inc. Amazon's basic AMIs) do not allow you to send a sudo command over ssh,
-    # -t -t seems to work around this but the command complains about 'Inappropriate ioctl for device'
-    ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "sudo $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin" > /dev/null
+    # check if the OS is 32 or 64 bt and choose the right java
+    bits=$(ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "getconf LONG_BIT")
+    if [ $bits == "32" ] ; then
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
+        # sudo is sometimes required where the user for the AMI is not root
+        # For security some servers (inc. Amazon's basic AMIs) do not allow you to send a sudo command over ssh,
+        # -t -t seems to work around this but the command complains about 'Inappropriate ioctl for device'
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "sudo $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin" > /dev/null
+    else # 64 bit
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin"
+        # sudo is sometimes required where the user for the AMI is not root
+        # For security some servers (inc. Amazon's basic AMIs) do not allow you to send a sudo command over ssh,
+        # -t -t seems to work around this but the command complains about 'Inappropriate ioctl for device'
+        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "sudo $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin" > /dev/null    
+    fi
+    
     # install jmeter
     echo -n "installing jmeter..."
     ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/jakarta-jmeter-2.5.1.tgz"
