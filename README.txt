@@ -8,6 +8,14 @@ the output of the Generate Summary Results listener as the test is running (both
 Once execution is complete it will download each hosts jtl file and collate them all together to give one file that can be viewed using the usual
 JMeter listeners.
 
+TO DO:
+This project is in development. The following features are pending.
+-- Dynamic editing of thread counts
+-- Changing any CSV file references to work remotely
+-- Acepting jmx filename as a parameter (not requiring that it be named the same as the directory)
+-- Create the results dir automatically
+-- Flatten dir structure? Remove need for sub dirs
+
 Usage: ./jmeter-ec2 [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]
 
 
