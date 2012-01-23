@@ -19,6 +19,7 @@ instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_S
 echo "sent"
 echo
 
+
 # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
 # less than the expected number is given wthout failing the test.
 countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
@@ -27,33 +28,28 @@ if [ $countof_instanceids != $INSTANCE_COUNT ] ; then
     INSTANCE_COUNT=$countof_instanceids
 fi
 
+
 # wait for each instance to be fully operational
-firstpass="true"
 status_check_count=0
-while read instanceid
+echo -n "waiting for instance status checks to pass..."
+count_passed=$(ec2-describe-instance-status $instanceids | awk '/SYSTEMSTATUS/ {print $3}' | grep -c passed)
+while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt 5 ]
 do
-    echo -n "waiting for $instanceid to start running..."
-    while host=$(ec2-describe-instances "$instanceid" | egrep ^INSTANCE | cut -f4) && test -z $host; do echo -n .; sleep 1; done
-    echo -n "waiting for instance status checks to pass..."
-    while status=$(ec2-describe-instance-status $instanceid | awk '/INSTANCESTATUS/ {print $3}') && [ $status != "passed" ] && [ $status_check_count -lt 45 ]
-        do echo -n .
-        sleep 1
-        status_check_count=$(( $status_check_count + 1))
-    done
-    if [ $status_check_count -lt 45 ] ; then
-        # get hostname and build the list used later in the script
-        host=`ec2-describe-instances $instanceid | awk '/INSTANCE/ {print $4}'`
-        if [ $firstpass == "true" ] ; then # don't stick a /n at the end of the previous line
-            hosts="$host"
-            firstpass="false"
-        else
-            hosts="$hosts"$'\n'"$host"
-        fi
-        echo "$host ready"
-    else # Amazon failed to start this host (fairly common) so drop this host, show a msg - Note. Could try to replace it with a new one?
-        echo "ERROR: $host failed to start. This machine will not be used in the test"
-    fi
-done <<<"$instanceids"
+    echo -n .
+    sleep 1
+    status_check_count=$(( $status_check_count + 1))
+    count_passed=$(ec2-describe-instance-status $instanceids | awk '/SYSTEMSTATUS/ {print $3}' | grep -c passed)
+done
+
+if [ $status_check_count -lt 5 ] ; then # all hosts started ok
+    # get hostname and build the list used later in the script
+    hosts=`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`
+    echo "all hosts ready"
+else # Amazon probably failed to start a host (fairly common) so show a msg - Note. Could try to replace it with a new one?
+    echo "ERROR: One or more hosts failed to start in the time allowed. These machines will not be used in the test"
+    echo `ec2-describe-instance-status | awk '{print $2"\t"$3}'` # tidy up later
+    # TO DO: pull in a filtered list of hosts excluding those that failed.
+fi
 echo
 
 
@@ -279,7 +275,7 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 
 # display final results
 echo
-echo "                 OVERALL RESULTS: count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+echo "OVERALL RESULTS:                  count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
 echo "remote test finished"
 echo
 
