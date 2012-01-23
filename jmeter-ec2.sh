@@ -19,6 +19,14 @@ instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_S
 echo "sent"
 echo
 
+# check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
+# less than the expected number is given wthout failing the test.
+countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
+if [ $countof_instanceids != $INSTANCE_COUNT ] ; then
+    echo "Only $countof_instanceids instances were given by Amazon, the test will continue using this adjusted value."
+    INSTANCE_COUNT=$countof_instanceids
+fi
+
 # wait for each instance to be fully operational
 firstpass="true"
 status_check_count=0
