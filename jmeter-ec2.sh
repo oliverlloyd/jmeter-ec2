@@ -27,10 +27,10 @@ do
     echo -n "waiting for $instanceid to start running..."
     while host=$(ec2-describe-instances "$instanceid" | egrep ^INSTANCE | cut -f4) && test -z $host; do echo -n .; sleep 1; done
     echo -n "waiting for instance status checks to pass..."
-    while status=$(ec2-describe-instance-status $instanceid | awk '/INSTANCESTATUS/ {print $3}') && [ $status != "passed" ] && [ $status_check_count -lt 45]
+    while status=$(ec2-describe-instance-status $instanceid | awk '/INSTANCESTATUS/ {print $3}') && [ $status != "passed" ] && [ $status_check_count -lt 45 ]
         do echo -n .
         sleep 1
-        $status_check_count=$(( $status_check_count + 1))
+        status_check_count=$(( $status_check_count + 1))
     done
     if [ $status_check_count -lt 45 ] ; then
         # get hostname and build the list used later in the script
