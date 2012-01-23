@@ -7,37 +7,47 @@ DATETIME=$(date "+%s")
 . jmeter-ec2.properties
 
 cd $EC2_HOME
-
+echo "   --------------------------------------------------------------------------------"
+echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instances"
+echo "   --------------------------------------------------------------------------------"
+echo
+echo
 # create the instance(s) and capture the instance id(s)
-echo "launching instance(s)..."
+echo -n "requesting $INSTANCE_COUNT instance(s)..."
 instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_SECURITYGROUP -n 1-$INSTANCE_COUNT --availability-zone \
     $INSTANCE_AVAILABILITYZONE $AMI_ID | awk '/^INSTANCE/ {print $2}')
-
+echo "sent"
+echo
 
 # wait for each instance to be fully operational
+firstpass="true"
 while read instanceid
 do
     echo -n "waiting for $instanceid to start running..."
     while host=$(ec2-describe-instances "$instanceid" | egrep ^INSTANCE | cut -f4) && test -z $host; do echo -n .; sleep 1; done
     echo -n "waiting for instance status checks to pass..."
     while status=$(ec2-describe-instance-status $instanceid | awk '/INSTANCESTATUS/ {print $3}') && [ $status != "passed" ] ; do echo -n .; sleep 1; done
+    # get hostname and build the list used later in the script
+    host=`ec2-describe-instances $instanceid | awk '/INSTANCE/ {print $4}'`
+    if [ $firstpass == "true" ] ; then # don't stick a /n at the end of the previous line
+        hosts="$host"
+        firstpass="false"
+    else
+        hosts="$hosts"$'\n'"$host"
+    fi
     echo "$host ready"
 done <<<"$instanceids"
-
-
-# get the host names or each instance
-hosts=$(ec2-describe-instances --filter "instance-state-name=running"| awk '/'"$AMI_ID"'/ {print $4}')
+echo
 
 
 # Install JAVA JRE & JMeter 2.5.1 (Ideally this would run in parallel for each host - how to check for completion?)
-while read host
+for host in $hosts
 do
     echo -n "preparing $host..."
     # install java
     echo -n "installing java..."
-    # check if the OS is 32 or 64 bt and choose the right java
     bits=$(ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "getconf LONG_BIT")
-    if [ $bits == "32" ] ; then
+    if [ $bits -eq 32 ] ; then
         ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
         ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
         # sudo is sometimes required where the user for the AMI is not root
@@ -58,7 +68,7 @@ do
     ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/jakarta-jmeter-2.5.1.tgz"
     ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
     echo "software installed"
-done <<< "$hosts"
+done
 
 
 # scp the test files onto each host  
@@ -67,8 +77,11 @@ do
     echo
     echo -n "copying files to $host..."
     # copies the data & jmx directories but not the results directory as this is not required
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT
-    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/testfiles $USER@$host:$REMOTE_HOME/$PROJECT
+    ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT
+    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/jmx $USER@$host:$REMOTE_HOME/$PROJECT
+    if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
+        scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/data $USER@$host:$REMOTE_HOME/$PROJECT
+    fi
     #
     # Upload a copy of the custom jmeter.properties & jmeter.sh files from LOCAL_HOME
     #
@@ -86,10 +99,10 @@ do
     #
     scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/jmeter.properties $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
     scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/jmeter $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
-    echo "complete"
+    echo -n "complete"
 done <<<"$hosts"
-echo ""
-
+echo
+echo
 
 #
 # run jmeter test plan
@@ -98,7 +111,7 @@ echo ""
 #         -o StrictHostKeyChecking=no \
 #        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \             # ec2 key file
 #        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
-#        -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \# run the jmx file that was uploaded
+#        -t $REMOTE_HOME/$PROJECT/jmx/$PROJECT.jmx \# run the jmx file that was uploaded
 #        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
 #        -Jtest.instances=$INSTANCE_COUNT \                   # pass in to the test how many instances are being used
 #        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \    # write results to the root of remote home
@@ -111,16 +124,18 @@ do
     (ssh -nq -o StrictHostKeyChecking=no \
     -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
-    -t $REMOTE_HOME/$PROJECT/testfiles/jmx/$PROJECT.jmx \
+    -t $REMOTE_HOME/$PROJECT/jmx/$PROJECT.jmx \
     -Jtest.root=$REMOTE_HOME \
     -Jtest.instances=$INSTANCE_COUNT \
     -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
     > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out) &
     counter=$((counter+1))
 done <<<"$hosts"
+echo
 
 
 # read the results data and print updates to the screen
+echo "waiting for test to start..."
 count_total=0
 avg_total=0
 count_overallhosts=0
@@ -201,7 +216,7 @@ do
                     screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1)
                     echo "$screenupdate | host: $host" # write results to screen
                 done <<< "$hosts"
-                echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg.: $avg_overallhosts, tps: $tps_overallhosts, errors: $errors_overallhosts"
+                echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
                 echo ""
             fi
         fi
@@ -247,8 +262,8 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 
 # display final results
 echo
-echo "OVERALL RESULTS: count: $count_overallhosts, avg.: $avg_overallhosts, tps: $tps_overallhosts, errors: $errors_overallhosts"
-echo "test finished"
+echo "                 OVERALL RESULTS: count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+echo "remote test finished"
 echo
 
 
@@ -265,15 +280,16 @@ do
     counter=$((counter+1))
     echo "$LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl complete"
 done <<<"$hosts"
-echo ""
+echo
 
 
 # terminate the running instances just created
 while read instanceid
 do
-    echo "terminating instance..."
+    echo -n "terminating instance..."
     ec2-terminate-instances $instanceid    
 done <<<"$instanceids"
+echo
 
 
 # process the files into one jtl results file
@@ -285,8 +301,9 @@ do
 done
 sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+mkdir -p $LOCAL_HOME/$PROJECT/results/
 mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
 echo "complete"
 echo
-echo "jmeter-ec2 complete"
+echo "jmeter-ec2 - script complete"
 echo
