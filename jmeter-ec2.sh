@@ -44,6 +44,7 @@ do
         echo "$host ready"
     else # Amazon failed to start this host (fairly common) so drop this host, show a msg - Note. Could try to replace it with a new one?
         echo "ERROR: $host failed to start. This machine will not be used in the test"
+    fi
 done <<<"$instanceids"
 echo
 
