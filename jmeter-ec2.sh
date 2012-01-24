@@ -41,9 +41,11 @@ echo
 
 # wait for each instance to be fully operational
 status_check_count=0
-echo -n "waiting for instance status checks to pass..."
+status_check_limit=15
+status_check_limit=`echo "$status_check_limit + $countof_instanceids" | bc` # increase wait time based on instance count
+echo -n "waiting for instance status checks to pass (this can take several minutes)..."
 count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
-while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt 20 ]
+while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt $status_check_limit ]
 do
     echo -n .
     sleep 1
@@ -51,42 +53,35 @@ do
     count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
 done
 
-if [ $status_check_count -lt 20 ] ; then # all hosts started ok
+if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok
     # get hostname and build the list used later in the script
     hosts=`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`
     echo "all hosts ready"
-else # Amazon probably failed to start a host (fairly common) so show a msg - Note. Could try to replace it with a new one?
-#    echo "countof_instanceids: $countof_instanceids"
+else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
     original_count=$countof_instanceids
-#    echo "original_count: $original_count"
     # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
     instanceids_clean=`echo $instanceids | tr '\n' ' '`
-#    echo "instanceids_clean: $instanceids_clean"
     # filter requested instances for only those that started well
-#    echo "ec2-describe-instance-status $instanceids_clean --filter instance-status.reachability=passed --filter system-status.reachability=passed | awk '/INSTANCE\t/ {print $2}'"
     healthy_instanceids=`ec2-describe-instance-status $instanceids --filter instance-status.reachability=passed --filter system-status.reachability=passed | awk '/INSTANCE\t/ {print $2}'`
-#    echo "healthy_instanceids: $healthy_instanceids"
     if [ -z "$healthy_instanceids" ] ; then
         countof_instanceids=0
-        echo "bad"
+        echo "no instances successfully initialised, exiting"
         exit
     else
-        countof_instanceids=`echo $healthy_instanceids | awk 'END { print NR }'`
+        countof_instanceids=`echo $healthy_instanceids | awk '{ total = total + NF }; END { print total+0 }'`
     fi
-#    echo "countof_instanceids: $countof_instanceids"
-    countof_failedinstances=$(echo "$original_count - $countof_instanceids"|bc)
-#    echo "countof_failedinstances: $countof_failedinstances"
+    countof_failedinstances=`echo "$original_count - $countof_instanceids"|bc`
     if [ "$countof_failedinstances" -gt 0 ] ; then # if we still see failed instances then write a message
-        echo "ERROR: $countof_failedinstances host(s) failed to start in the time allowed. Only $countof_instanceids machine(s) will be used in the test"
+        echo "$countof_failedinstances instances(s) failed to start, only $countof_instanceids machine(s) will be used in the test"
         INSTANCE_COUNT=$countof_instanceids
     fi
     hosts=`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`
-#    echo "hosts: $hosts"
 fi
 echo
 
 
 # scp install.sh
+echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
 for host in $hosts
 do
     (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
@@ -97,7 +92,6 @@ do
 done
 
 # check to see if the scp call is complete
-echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
 res=0
 while [ "$res" != "$INSTANCE_COUNT" ] ;
 do
@@ -110,6 +104,7 @@ echo
 
 
 # Install JAVA JRE & JMeter 2.5.1 (Ideally this would run in parallel for each host - how to check for completion?)
+echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
 for host in $hosts
 do
     (ssh -nq -o StrictHostKeyChecking=no \
@@ -119,7 +114,6 @@ do
 done
 
 # check to see if the install scripts are complete
-echo -n "running installation script on $INSTANCE_COUNT server(s)..."
 res=0
 while [ "$res" != "$INSTANCE_COUNT" ]; # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
 do
@@ -133,16 +127,18 @@ echo
 
 
 # scp the test files onto each host
-echo -n "copying files to $host..." 
+echo -n "copying test files to $INSTANCE_COUNT server(s)..."
 # create $PROJECT dir
+echo -n "$PROJECT dir.."
 for host in $hosts
 do
     (ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT) &
 done
 wait
-echo -n "created $PROJECT dir..."
+echo -n "done...."
 
 # scp jmx dir
+echo -n "jmx dir.."
 for host in $hosts
 do
     (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
@@ -151,9 +147,10 @@ do
                                   $USER@$host:$REMOTE_HOME/$PROJECT) &
 done
 wait
-echo -n "copied jmx files..."
+echo -n "done...."
 
 # scp data dir
+echo -n "data dir.."
 if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
     for host in $hosts
     do
@@ -163,10 +160,11 @@ if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional d
                                       $USER@$host:$REMOTE_HOME/$PROJECT) &
     done
     wait
-    echo -n "copied data files..."
+    echo -n "done...."
 fi
 
 # scp jmeter.properties
+echo -n "jmeter.properties.."
 for host in $hosts
 do
     (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
@@ -175,9 +173,10 @@ do
                                   $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
 done
 wait
-echo -n "copied jmeter.properties..."
+echo -n "done...."
 
 # scp jmeter execution file
+echo -n "jmeter execution file..."
 for host in $hosts
 do
     (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
@@ -186,8 +185,7 @@ do
                                   $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
 done
 wait
-echo -n "copied jmeter execution file..."
-echo "complete"
+echo "all files uploaded"
 echo
 
 
@@ -207,6 +205,7 @@ echo
 # TO DO: Temp files are a poor way to track multiple subshells - improve?
 #
 counter=0
+echo
 echo "starting jmeter on:"
 while read host
 do
@@ -226,6 +225,7 @@ echo
 
 
 echo "========================================================= START OF JMETER-EC2 TEST ================================================================================"
+echo "Test started at $(date)"
 # read the results data and print updates to the screen
 echo "waiting for output..."
 echo
@@ -265,12 +265,6 @@ do
                 tps_total=${tps_total_raw%/s} # remove the trailing '/s'
                 errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
                 
-                #if [[ -n "$count_total" ]] ; then # not null (bc bombs on nulls) # redundant if - remove and retest
-                #    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
-                #fi
-                #if [[ -n "$avg_total" ]] ; then # not null # redundant if - remove and retest
-                #    avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
-                #fi
                 count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
                 avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
                 tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
@@ -302,14 +296,14 @@ do
             # now write out the data to the screen
             if [ $wait == 0 ] ; then # each file is ready to summarise
                 echo ""
-                echo "-- Summary --"
                 while read host
                 do
                     screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1)
                     echo "$screenupdate | host: $host" # write results to screen
                 done <<< "$hosts"
-                echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
-                echo ""
+                echo
+                echo "$(date) [RUNNING TOTALS]: count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+                echo
             fi
         fi
     fi
@@ -354,7 +348,8 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 
 # display final results
 echo
-echo "OVERALL RESULTS:                  count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+echo
+echo "$(date) [OVERALL RESULTS]: count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
 echo
 echo "========================================================= END OF JMETER-EC2 TEST =================================================================================="
 echo
@@ -378,11 +373,8 @@ echo
 
 
 # terminate the running instances just created
-while read instanceid
-do
-    echo -n "terminating instance..."
-    ec2-terminate-instances $instanceid    
-done <<<"$instanceids"
+echo "terminating instance(s)..."
+ec2-terminate-instances $instanceids
 echo
 
 
@@ -391,7 +383,7 @@ echo -n "processing results..."
 for (( i=0; i<$INSTANCE_COUNT; i++ ))
 do
     cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
-    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl # removes the individual results from each host - might be useful to some people to keep these files?
+    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
 done
 sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
