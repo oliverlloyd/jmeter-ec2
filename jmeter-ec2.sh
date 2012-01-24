@@ -18,8 +18,14 @@ echo
 
 # create the instance(s) and capture the instance id(s)
 echo -n "requesting $INSTANCE_COUNT instance(s)..."
-instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_SECURITYGROUP -n 1-$INSTANCE_COUNT --availability-zone \
-    $INSTANCE_AVAILABILITYZONE $AMI_ID | awk '/^INSTANCE/ {print $2}')
+instanceids=$(ec2-run-instances \
+            --key $PEM_FILE \
+            -t $INSTANCE_TYPE \
+            -g $INSTANCE_SECURITYGROUP \
+            -n 1-$INSTANCE_COUNT \
+            --availability-zone \
+            $INSTANCE_AVAILABILITYZONE $AMI_ID \
+            | awk '/^INSTANCE/ {print $2}')
 # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
 # less than the expected number is given wthout failing the test.
 countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
@@ -44,16 +50,16 @@ status_check_count=0
 status_check_limit=15
 status_check_limit=`echo "$status_check_limit + $countof_instanceids" | bc` # increase wait time based on instance count
 echo -n "waiting for instance status checks to pass (this can take several minutes)..."
-count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+count_passed=0
 while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt $status_check_limit ]
 do
     echo -n .
-    sleep 1
     status_check_count=$(( $status_check_count + 1))
     count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+    sleep 1
 done
 
-if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok
+if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==INSTANCE_COUNT
     # get hostname and build the list used later in the script
     hosts=`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`
     echo "all hosts ready"
@@ -62,7 +68,10 @@ else # Amazon probably failed to start a host [*** NOTE this is fairly common **
     # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
     instanceids_clean=`echo $instanceids | tr '\n' ' '`
     # filter requested instances for only those that started well
-    healthy_instanceids=`ec2-describe-instance-status $instanceids --filter instance-status.reachability=passed --filter system-status.reachability=passed | awk '/INSTANCE\t/ {print $2}'`
+    healthy_instanceids=`ec2-describe-instance-status $instanceids \
+                        --filter instance-status.reachability=passed \
+                        --filter system-status.reachability=passed \
+                        | awk '/INSTANCE\t/ {print $2}'`
     if [ -z "$healthy_instanceids" ] ; then
         countof_instanceids=0
         echo "no instances successfully initialised, exiting"
@@ -98,7 +107,8 @@ res=0
 while [ "$res" != "$INSTANCE_COUNT" ] ;
 do
     echo -n .
-    res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+    res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out \
+        | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
     sleep 3
 done
 echo "complete"
@@ -121,7 +131,8 @@ res=0
 while [ "$res" != "$INSTANCE_COUNT" ]; # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
 do
     echo -n .
-    res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+    res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out \
+        | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
     sleep 3
 done
 echo "complete"
@@ -135,7 +146,10 @@ echo -n "copying test files to $INSTANCE_COUNT server(s)..."
 echo -n "$PROJECT dir.."
 for host in $hosts
 do
-    (ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT) &
+    (ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                     -i $PEM_PATH/$PEM_FILE.pem \
+                                     $USER@$host mkdir \
+                                     $REMOTE_HOME/$PROJECT) &
 done
 wait
 echo -n "done...."
@@ -373,7 +387,11 @@ counter=0
 while read host
 do
     echo -n "downloading results from $host..."
-    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl $LOCAL_HOME/$PROJECT/
+    scp -q -o UserKnownHostsFile=/dev/null \
+                                 -o StrictHostKeyChecking=no \
+                                 -i $PEM_PATH/$PEM_FILE.pem \
+                                 $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
+                                 $LOCAL_HOME/$PROJECT/
     counter=$((counter+1))
     echo "$LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl complete"
 done <<<"$hosts"
