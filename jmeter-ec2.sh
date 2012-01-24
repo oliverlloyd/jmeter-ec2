@@ -14,6 +14,8 @@ echo "   -----------------------------------------------------------------------
 echo
 echo
 
+
+
 # create the instance(s) and capture the instance id(s)
 echo -n "requesting $INSTANCE_COUNT instance(s)..."
 instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_SECURITYGROUP -n 1-$INSTANCE_COUNT --availability-zone \
@@ -34,8 +36,6 @@ else
     echo "success"
 fi
 echo
-
-
 
 
 
@@ -80,6 +80,7 @@ fi
 echo
 
 
+
 # scp install.sh
 echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
 for host in $hosts
@@ -92,6 +93,7 @@ do
 done
 
 # check to see if the scp call is complete
+# (could just use the wait command here...)
 res=0
 while [ "$res" != "$INSTANCE_COUNT" ] ;
 do
@@ -101,6 +103,7 @@ do
 done
 echo "complete"
 echo
+
 
 
 # Install JAVA JRE & JMeter 2.5.1 (Ideally this would run in parallel for each host - how to check for completion?)
@@ -189,6 +192,7 @@ echo "all files uploaded"
 echo
 
 
+
 #
 # run jmeter test plan
 #
@@ -224,6 +228,7 @@ echo
 echo
 
 
+
 echo "========================================================= START OF JMETER-EC2 TEST ================================================================================"
 echo "Test started at $(date)"
 # read the results data and print updates to the screen
@@ -236,9 +241,9 @@ count_overallhosts=0
 avg_overallhosts=0
 tps_overallhosts=0
 errors_overallhosts=0
+
 i=1
 firstmodmatch="TRUE"
-
 res=0
 while [ $res != $INSTANCE_COUNT ]; # test not complete (count of matches for 'end of run' not equal to count of hosts running the test)
 do
@@ -326,6 +331,7 @@ do
 done
 
 
+
 # now the test is complete calculate a final summary and write to the screen
 while read host
 do
@@ -356,8 +362,10 @@ echo
 echo
 
 
+
 # tidy up working files
 rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
+
 
 
 # download the results
@@ -372,10 +380,12 @@ done <<<"$hosts"
 echo
 
 
+
 # terminate the running instances just created
 echo "terminating instance(s)..."
 ec2-terminate-instances $instanceids
 echo
+
 
 
 # process the files into one jtl results file
