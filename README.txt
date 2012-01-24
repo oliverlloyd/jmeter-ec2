@@ -1,9 +1,9 @@
 JMeter ec2 Script
 -----------------------------
 
-This shell script will allow you to run your local JMeter jmx files using Amazon's EC2 service. It will dynamically install Java and Jmeter, so it
-will work over most AMI types, and it will run your test over as many instances as you wish (or are allowed to create by Amazon - the default is 20)
-automatically ajusting the test parameters to evenly distribute the load. The script will collate the resultsvfrom each host in real time and display
+This shell script will allow you to run your local JMeter jmx files using Amazon's EC2 service. It will dynamically install Java and Jmeter using
+SUSE Linux AMIs, and it will run your test over as many instances as you wish (or are allowed to create by Amazon - the default is 20) automatically
+ajusting the test parameters to evenly distribute the load (pending). The script will collate the results from each host in real time and display
 the output of the Generate Summary Results listener as the test is running (both per individual host and an agregated view across all hosts).
 Once execution is complete it will download each hosts jtl file and collate them all together to give one file that can be viewed using the usual
 JMeter listeners.
