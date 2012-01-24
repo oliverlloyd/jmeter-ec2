@@ -14,7 +14,9 @@ This project is in development. The following features are pending.
 -- Changing any CSV file references to work remotely
 -- Acepting jmx filename as a parameter (not requiring that it be named the same as the directory)
 
-Usage: ./jmeter-ec2 [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]
+Usage: ./jmeter-ec2 [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]*
+
+*IMPORTANT: There is a limit imposed by Amazon on how many instances can be run [the default is 20 instances - Oct 2011].
 
 
 Pre-requisits
