@@ -7,115 +7,189 @@ DATETIME=$(date "+%s")
 . jmeter-ec2.properties
 
 cd $EC2_HOME
+echo
 echo "   --------------------------------------------------------------------------------"
-echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instances"
+echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instance(s)"
 echo "   --------------------------------------------------------------------------------"
 echo
 echo
+
 # create the instance(s) and capture the instance id(s)
 echo -n "requesting $INSTANCE_COUNT instance(s)..."
 instanceids=$(ec2-run-instances --key $PEM_FILE -t $INSTANCE_TYPE -g $INSTANCE_SECURITYGROUP -n 1-$INSTANCE_COUNT --availability-zone \
     $INSTANCE_AVAILABILITYZONE $AMI_ID | awk '/^INSTANCE/ {print $2}')
-echo "sent"
-echo
-
-
 # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
 # less than the expected number is given wthout failing the test.
 countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
-if [ $countof_instanceids != $INSTANCE_COUNT ] ; then
-    echo "Only $countof_instanceids instances were given by Amazon, the test will continue using this adjusted value."
-    INSTANCE_COUNT=$countof_instanceids
+if [ "$countof_instanceids" = 0 ] ; then
+    echo
+    echo "Amazon did not supply any instances, exiting"
+    echo
+    exit
 fi
+if [ $countof_instanceids != $INSTANCE_COUNT ] ; then
+    echo "$countof_instanceids instance(s) were given by Amazon, the test will continue using only these instance(s)."
+    INSTANCE_COUNT=$countof_instanceids
+else
+    echo "success"
+fi
+echo
+
+
+
 
 
 # wait for each instance to be fully operational
 status_check_count=0
 echo -n "waiting for instance status checks to pass..."
-count_passed=$(ec2-describe-instance-status $instanceids | awk '/SYSTEMSTATUS/ {print $3}' | grep -c passed)
-while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt 5 ]
+count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt 20 ]
 do
     echo -n .
     sleep 1
     status_check_count=$(( $status_check_count + 1))
-    count_passed=$(ec2-describe-instance-status $instanceids | awk '/SYSTEMSTATUS/ {print $3}' | grep -c passed)
+    count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
 done
 
-if [ $status_check_count -lt 5 ] ; then # all hosts started ok
+if [ $status_check_count -lt 20 ] ; then # all hosts started ok
     # get hostname and build the list used later in the script
     hosts=`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`
     echo "all hosts ready"
 else # Amazon probably failed to start a host (fairly common) so show a msg - Note. Could try to replace it with a new one?
-    echo "ERROR: One or more hosts failed to start in the time allowed. These machines will not be used in the test"
-    echo `ec2-describe-instance-status | awk '{print $2"\t"$3}'` # tidy up later
-    # TO DO: pull in a filtered list of hosts excluding those that failed.
+#    echo "countof_instanceids: $countof_instanceids"
+    original_count=$countof_instanceids
+#    echo "original_count: $original_count"
+    # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
+    instanceids_clean=`echo $instanceids | tr '\n' ' '`
+#    echo "instanceids_clean: $instanceids_clean"
+    # filter requested instances for only those that started well
+#    echo "ec2-describe-instance-status $instanceids_clean --filter instance-status.reachability=passed --filter system-status.reachability=passed | awk '/INSTANCE\t/ {print $2}'"
+    healthy_instanceids=`ec2-describe-instance-status $instanceids --filter instance-status.reachability=passed --filter system-status.reachability=passed | awk '/INSTANCE\t/ {print $2}'`
+#    echo "healthy_instanceids: $healthy_instanceids"
+    if [ -z "$healthy_instanceids" ] ; then
+        countof_instanceids=0
+        echo "bad"
+        exit
+    else
+        countof_instanceids=`echo $healthy_instanceids | awk 'END { print NR }'`
+    fi
+#    echo "countof_instanceids: $countof_instanceids"
+    countof_failedinstances=$(echo "$original_count - $countof_instanceids"|bc)
+#    echo "countof_failedinstances: $countof_failedinstances"
+    if [ "$countof_failedinstances" -gt 0 ] ; then # if we still see failed instances then write a message
+        echo "ERROR: $countof_failedinstances host(s) failed to start in the time allowed. Only $countof_instanceids machine(s) will be used in the test"
+        INSTANCE_COUNT=$countof_instanceids
+    fi
+    hosts=`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`
+#    echo "hosts: $hosts"
 fi
+echo
+
+
+# scp install.sh
+for host in $hosts
+do
+    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                  -i $PEM_PATH/$PEM_FILE.pem \
+                                  $LOCAL_HOME/$PROJECT/install.sh \
+                                  $USER@$host:$REMOTE_HOME \
+                                  && echo "done" > $LOCAL_HOME/$PROJECT/$DATETIME-$host-scpinstall.out)
+done
+
+# check to see if the scp call is complete
+echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
+res=0
+while [ "$res" != "$INSTANCE_COUNT" ] ;
+do
+    echo -n .
+    res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+    sleep 3
+done
+echo "complete"
 echo
 
 
 # Install JAVA JRE & JMeter 2.5.1 (Ideally this would run in parallel for each host - how to check for completion?)
 for host in $hosts
 do
-    echo -n "preparing $host..."
-    # install java
-    echo -n "installing java..."
-    bits=$(ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "getconf LONG_BIT")
-    if [ $bits -eq 32 ] ; then
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin"
-        # sudo is sometimes required where the user for the AMI is not root
-        # For security some servers (inc. Amazon's basic AMIs) do not allow you to send a sudo command over ssh,
-        # -t -t seems to work around this but the command complains about 'Inappropriate ioctl for device'
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "sudo $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin" > /dev/null
-    else # 64 bit
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin"
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "chmod 755 $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin"
-        # sudo is sometimes required where the user for the AMI is not root
-        # For security some servers (inc. Amazon's basic AMIs) do not allow you to send a sudo command over ssh,
-        # -t -t seems to work around this but the command complains about 'Inappropriate ioctl for device'
-        ssh -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "sudo $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin" > /dev/null    
-    fi
-    
-    # install jmeter
-    echo -n "installing jmeter..."
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/jakarta-jmeter-2.5.1.tgz"
-    ssh -nq -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host "tar -C $REMOTE_HOME -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz"
-    echo "software installed"
+    (ssh -nq -o StrictHostKeyChecking=no \
+        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
+        "$REMOTE_HOME/install.sh $REMOTE_HOME" \
+        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-install.out) &
 done
 
-
-# scp the test files onto each host  
-while read host
+# check to see if the install scripts are complete
+echo -n "running installation script on $INSTANCE_COUNT server(s)..."
+res=0
+while [ "$res" != "$INSTANCE_COUNT" ]; # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
 do
-    echo
-    echo -n "copying files to $host..."
-    # copies the data & jmx directories but not the results directory as this is not required
-    ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT
-    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/jmx $USER@$host:$REMOTE_HOME/$PROJECT
-    if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
-        scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/$PROJECT/data $USER@$host:$REMOTE_HOME/$PROJECT
-    fi
-    #
-    # Upload a copy of the custom jmeter.properties & jmeter.sh files from LOCAL_HOME
-    #
-    # ****** Note. This is only required if the default values are not suitable. *****
-    #
-    # The files referenced below contain the following amendments from the default:
-    # -- jmeter.properties --
-    # jmeter.save.saveservice.output_format=csv - more efficient
-    # jmeter.save.saveservice.hostname=true - potentially useful in this context but not required
-    # summariser.interval=15 - this value should be less than the sleep statement in the main results processing loop further below
-    #
-    # -- jmeter.sh --
-    # HEAP="-Xms2048m -Xmx2048m" - this is assuming the instance chosen has sufficient memory, more than likely the case
-    # NEW="-XX:NewSize=256m -XX:MaxNewSize=256m" - arguably overkill
-    #
-    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/jmeter.properties $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
-    scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $LOCAL_HOME/jmeter $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/
-    echo -n "complete"
-done <<<"$hosts"
+    echo -n .
+    res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+    sleep 3
+done
+echo "complete"
 echo
+
+
+
+# scp the test files onto each host
+echo -n "copying files to $host..." 
+# create $PROJECT dir
+for host in $hosts
+do
+    (ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $PEM_PATH/$PEM_FILE.pem $USER@$host mkdir $REMOTE_HOME/$PROJECT) &
+done
+wait
+echo -n "created $PROJECT dir..."
+
+# scp jmx dir
+for host in $hosts
+do
+    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+                                  -i $PEM_PATH/$PEM_FILE.pem \
+                                  $LOCAL_HOME/$PROJECT/jmx \
+                                  $USER@$host:$REMOTE_HOME/$PROJECT) &
+done
+wait
+echo -n "copied jmx files..."
+
+# scp data dir
+if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
+    for host in $hosts
+    do
+        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+                                      -i $PEM_PATH/$PEM_FILE.pem \
+                                      $LOCAL_HOME/$PROJECT/data \
+                                      $USER@$host:$REMOTE_HOME/$PROJECT) &
+    done
+    wait
+    echo -n "copied data files..."
+fi
+
+# scp jmeter.properties
+for host in $hosts
+do
+    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                  -i $PEM_PATH/$PEM_FILE.pem \
+                                  $LOCAL_HOME/jmeter.properties \
+                                  $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
+done
+wait
+echo -n "copied jmeter.properties..."
+
+# scp jmeter execution file
+for host in $hosts
+do
+    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                  -i $PEM_PATH/$PEM_FILE.pem \
+                                  $LOCAL_HOME/jmeter \
+                                  $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
+done
+wait
+echo -n "copied jmeter execution file..."
+echo "complete"
 echo
+
 
 #
 # run jmeter test plan
@@ -128,12 +202,15 @@ echo
 #        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
 #        -Jtest.instances=$INSTANCE_COUNT \                   # pass in to the test how many instances are being used
 #        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \    # write results to the root of remote home
-#        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out    # redirect the output from Generate Summary Results to a local temp file (later read to present real time results to screen)
+#        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out    # redirect the output from Generate Summary Results to a local temp file (later read to present real time results to screen)
+#
+# TO DO: Temp files are a poor way to track multiple subshells - improve?
 #
 counter=0
+echo "starting jmeter on:"
 while read host
 do
-    echo "running jmeter on $host..."
+    echo "$host"
     (ssh -nq -o StrictHostKeyChecking=no \
     -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
@@ -141,14 +218,18 @@ do
     -Jtest.root=$REMOTE_HOME \
     -Jtest.instances=$INSTANCE_COUNT \
     -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
-    > $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out) &
+    > $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out) &
     counter=$((counter+1))
 done <<<"$hosts"
 echo
+echo
 
 
+echo "========================================================= START OF JMETER-EC2 TEST ================================================================================"
 # read the results data and print updates to the screen
-echo "waiting for test to start..."
+echo "waiting for output..."
+echo
+# TO DO: Are thse required?
 count_total=0
 avg_total=0
 count_overallhosts=0
@@ -158,33 +239,31 @@ errors_overallhosts=0
 i=1
 firstmodmatch="TRUE"
 
-# check to see if the test is complete
-res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-
+res=0
 while [ $res != $INSTANCE_COUNT ]; # test not complete (count of matches for 'end of run' not equal to count of hosts running the test)
 do
     # gather results data and write to screen for each host
     while read host
     do
-        check=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $1}') # make sure the test has really started to write results to the file
+        check=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $1}') # make sure the test has really started to write results to the file
         if [[ -n "$check" ]] ; then # not null
             if [ $check == "Generate" ] ; then # test has begun
-                screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1)
+                screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1)
                 echo "$screenupdate | host: $host" # write results to screen
                 
                 # get the latest values
-                count=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
-                avg=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $11}') # pull out current avg
-                tps_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $9}') # pull out current tps
-                errors_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results +" | tail -1 | awk '{print $17}') # pull out current errors
+                count=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
+                avg=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $11}') # pull out current avg
+                tps_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $9}') # pull out current tps
+                errors_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $17}') # pull out current errors
                 tps=${tps_raw%/s} # remove the trailing '/s'
                 
                 # get the latest summary values
-                count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
-                avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
-                tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $9}')
+                count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $5}')
+                avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $11}')
+                tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $9}')
                 tps_total=${tps_total_raw%/s} # remove the trailing '/s'
-                errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $17}')
+                errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
                 
                 #if [[ -n "$count_total" ]] ; then # not null (bc bombs on nulls) # redundant if - remove and retest
                 #    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
@@ -214,7 +293,7 @@ do
             wait=0
             while read host
             do
-                result_count=$(grep -c "Results =" $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out)
+                result_count=$(grep -c "Results =" $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out)
                 if [ $result_count = 0 ] ; then
                     wait=1
                 fi
@@ -226,7 +305,7 @@ do
                 echo "-- Summary --"
                 while read host
                 do
-                    screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1)
+                    screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1)
                     echo "$screenupdate | host: $host" # write results to screen
                 done <<< "$hosts"
                 echo "RUNNING TOTALS (across all hosts): count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
@@ -249,7 +328,7 @@ do
     errors_overallhosts=0
     
     # check again to see if the test is complete (inside the loop)
-    res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out | awk -F: '{ s+=$NF } END { print s }')
+    res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*jmeter.out | awk -F: '{ s+=$NF } END { print s }')
 done
 
 
@@ -257,11 +336,11 @@ done
 while read host
 do
     # get the final summary values
-    count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $5}')
-    avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $11}')
-    tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $9}')
+    count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $5}')
+    avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $11}')
+    tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $9}')
     tps_total=${tps_total_raw%/s} # remove the trailing '/s'
-    errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-stdout.out | grep "Results =" | tail -1 | awk '{print $17}')
+    errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
     
     # running totals
     count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
@@ -276,12 +355,14 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 # display final results
 echo
 echo "OVERALL RESULTS:                  count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
-echo "remote test finished"
+echo
+echo "========================================================= END OF JMETER-EC2 TEST =================================================================================="
+echo
 echo
 
 
 # tidy up working files
-rm $LOCAL_HOME/$PROJECT/$DATETIME*stdout.out
+rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
 
 
 # download the results
@@ -318,5 +399,8 @@ mkdir -p $LOCAL_HOME/$PROJECT/results/
 mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
 echo "complete"
 echo
-echo "jmeter-ec2 - script complete"
+echo
+echo "   --------------------------------------------------------------------------------"
+echo "       jmeter-ec2 Automation Script - COMPLETE"
+echo "   --------------------------------------------------------------------------------"
 echo
