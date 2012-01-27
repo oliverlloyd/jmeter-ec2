@@ -248,8 +248,8 @@ wait
 echo -n "done...."
 
 # scp data dir
-echo -n "data dir.."
 if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
+    echo -n "data dir.."
     for host in ${hosts[@]} ; do
         (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
                                       -i $PEM_PATH/$PEM_FILE.pem \
@@ -261,27 +261,32 @@ if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional d
 fi
 
 # scp jmeter.properties
-echo -n "jmeter.properties.."
-for host in ${hosts[@]} ; do
-    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                  -i $PEM_PATH/$PEM_FILE.pem \
-                                  $LOCAL_HOME/jmeter.properties \
-                                  $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
-done
-wait
-echo -n "done...."
+if [ -x $LOCAL_HOME/$PROJECT/jmeter.properties ] ; then # don't try to upload this optional file if it is not present
+    echo -n "jmeter.properties.."
+    for host in ${hosts[@]} ; do
+        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                      -i $PEM_PATH/$PEM_FILE.pem \
+                                      $LOCAL_HOME/jmeter.properties \
+                                      $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
+    done
+    wait
+    echo -n "done...."
+fi
 
 # scp jmeter execution file
-echo -n "jmeter execution file..."
-for host in ${hosts[@]} ; do
-    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                  -i $PEM_PATH/$PEM_FILE.pem \
-                                  $LOCAL_HOME/jmeter \
-                                  $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
-done
-wait
-echo "all files uploaded"
+if [ -x $LOCAL_HOME/$PROJECT/jmeter ] ; then # don't try to upload this optional file if it is not present
+    echo -n "jmeter execution file..."
+    for host in ${hosts[@]} ; do
+        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                      -i $PEM_PATH/$PEM_FILE.pem \
+                                      $LOCAL_HOME/jmeter \
+                                      $USER@$host:$REMOTE_HOME/jakarta-jmeter-2.5.1/bin/) &
+    done
+    wait
+    echo "all files uploaded"
+fi
 echo
+
 
 
 
