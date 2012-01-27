@@ -150,7 +150,7 @@ while read filepath ; do
         # extract the filename from the filepath using the property FILEPATH_SEPARATOR
         # TO DO: This code currently will not replace filenames or paths that have '${}' in them.
         filename=$( echo $filepath | awk -F"$FILEPATH_SEPARATOR" '{print $NF}' )
-        endresult="$REMOTE_HOME""$FILEPATH_SEPARATOR""$filename"
+        endresult="$REMOTE_HOME"/data/"$filename"
         awk '/<stringProp name=\"filename\">[^<]*<\/stringProp>/{c++;if(c=='"$i"') \
                                {sub("filename\">'"$filepath"'<","filename\">'"$endresult"'<")}}1' \
                                $working_jmx > $temp_jmx
@@ -243,26 +243,26 @@ for y in "${!hosts[@]}" ; do
     (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
                                   -i $PEM_PATH/$PEM_FILE.pem \
                                   $LOCAL_HOME/$PROJECT/working_$y \
-                                  $USER@${hosts[$y]}:$REMOTE_HOME/$PROJECT/execute.jmx) &
+                                  $USER@${hosts[$y]}:$REMOTE_HOME/execute.jmx) &
 done
 wait
 echo -n "done...."
 
 # scp data dir
-if [ -x $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
+if [ -r $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
     echo -n "data dir.."
     for host in ${hosts[@]} ; do
         (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
                                       -i $PEM_PATH/$PEM_FILE.pem \
                                       $LOCAL_HOME/$PROJECT/data \
-                                      $USER@$host:$REMOTE_HOME/$PROJECT) &
+                                      $USER@$host:$REMOTE_HOME/) &
     done
     wait
     echo -n "done...."
 fi
 
 # scp jmeter.properties
-if [ -x $LOCAL_HOME/$PROJECT/jmeter.properties ] ; then # don't try to upload this optional file if it is not present
+if [ -r $LOCAL_HOME/jmeter.properties ] ; then # don't try to upload this optional file if it is not present
     echo -n "jmeter.properties.."
     for host in ${hosts[@]} ; do
         (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
@@ -275,7 +275,7 @@ if [ -x $LOCAL_HOME/$PROJECT/jmeter.properties ] ; then # don't try to upload th
 fi
 
 # scp jmeter execution file
-if [ -x $LOCAL_HOME/$PROJECT/jmeter ] ; then # don't try to upload this optional file if it is not present
+if [ -r $LOCAL_HOME/jmeter ] ; then # don't try to upload this optional file if it is not present
     echo -n "jmeter execution file..."
     for host in ${hosts[@]} ; do
         (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
@@ -299,7 +299,7 @@ echo
 #         -o StrictHostKeyChecking=no \
 #        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \             # ec2 key file
 #        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
-#        -t $REMOTE_HOME/$PROJECT/execute.jmx \           # run the jmx file that was uploaded
+#        -t $REMOTE_HOME/execute.jmx \           # run the jmx file that was uploaded
 #        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
 #        -Jtest.instances=$INSTANCE_COUNT \                   # pass in to the test how many instances are being used
 #        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \    # write results to the root of remote home
@@ -317,7 +317,7 @@ for host in ${hosts[@]} ; do
     ( ssh -nq -o StrictHostKeyChecking=no \
     -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
-    -t $REMOTE_HOME/$PROJECT/execute.jmx \
+    -t $REMOTE_HOME/execute.jmx \
     -Jtest.root=$REMOTE_HOME \
     -Jtest.instances=$INSTANCE_COUNT \
     -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
