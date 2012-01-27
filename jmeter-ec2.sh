@@ -93,7 +93,7 @@ echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
 for host in ${hosts[@]} ; do
     (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                   -i $PEM_PATH/$PEM_FILE.pem \
-                                  $LOCAL_HOME/$PROJECT/install.sh \
+                                  $LOCAL_HOME/install.sh \
                                   $USER@$host:$REMOTE_HOME \
                                   && echo "done" > $LOCAL_HOME/$PROJECT/$DATETIME-$host-scpinstall.out)
 done
@@ -227,6 +227,7 @@ fi
 echo -n "copying test files to $INSTANCE_COUNT server(s)..."
 # create $PROJECT dir
 echo -n "$PROJECT dir.."
+# create poject directory
 for host in ${hosts[@]} ; do
     (ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                      -i $PEM_PATH/$PEM_FILE.pem \
