@@ -1,28 +1,23 @@
 JMeter ec2 Script
 -----------------------------
 
-This shell script will allow you to run your local JMeter jmx files using Amazon's EC2 service. It will dynamically install Java and Jmeter using
+This shell script will allow you to run your local JMeter jmx files using Amazon's EC2 service. It will dynamically install Java and Apache JMeter (2.5.1) using
 SUSE Linux AMIs, and it will run your test over as many instances as you wish (or are allowed to create by Amazon - the default is 20) automatically
-ajusting the test parameters to evenly distribute the load (pending). The script will collate the results from each host in real time and display
+ajusting the test parameters to evenly distribute the load. The script will collate the results from each host in real time and display
 the output of the Generate Summary Results listener as the test is running (both per individual host and an agregated view across all hosts).
-Once execution is complete it will download each hosts jtl file and collate them all together to give one file that can be viewed using the usual
+Once execution is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual
 JMeter listeners.
 
 TO DO:
 This project is in development. The following features are pending.
--- Dynamic editing of thread counts
--- Changing any CSV file references to work remotely
--- Acepting jmx filename as a parameter (not requiring that it be named the same as the directory)
--- Read in *.jmx
--- Default to 1 instance if count not present
--- Take jmx as a param, default to project name if not present
--- Accept a list of hosts instead of launching new ones
--- Accept a list of IPs to be assigned to new hosts
+-- Accept jmx filename as a parameter (not requiring that it be named the same as the directory)
+-- Accept a list of hosts instead of launching new ones - useful for repetative testing and custom AMIs
+-- Accept a list of elastic IPs to be assigned to new hosts
 
 
-Usage: ./jmeter-ec2 [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]*
+Usage: ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]*
 
-*IMPORTANT: There is a limit imposed by Amazon on how many instances can be run [the default is 20 instances - Oct 2011].
+*IMPORTANT - There is a limit imposed by Amazon on how many instances can be run [the default is 20 instances - Oct 2011].
 
 
 Pre-requisits
@@ -32,19 +27,21 @@ Pre-requisits
 
 
 Execution Instructions (for Linux based OSs - 32 & 64bit)
-1. Create a project directory on your machine. For example: '/home/username/someproject'. This is the working dir for the script. Under the directory
-    just created, create three sub directories named 'jmx', 'resutls' and 'data.
+1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script.
+    Under this directory just created, create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then
+    below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
     
-    Detailed steps:
-    a) For example, create a root directory like this: mkdir /home/username/someproject
-    b) mkdir /home/username/someproject/jmx
-    c) mkdir /home/username/someproject/results
-    d) mkdir /home/username/someproject/data
+        /home/username/jmeter-ec2/
+        /home/username/jmeter-ec2/myproject/
+        /home/username/jmeter-ec2/myproject/jmx/
+        /home/username/jmeter-ec2/myproject/data/
+    
+    Note. '/home/username/jmeter-ec2' can be anything so long as it is accessible and specified in the properties file.
 
-2. Download all files from https://github.com/oliverlloyd/jmeter-ec2.git and place them in the root directory (eg. /home/username/someproject).
+2. Download all files from https://github.com/oliverlloyd/jmeter-ec2.git and place them in the root directory (eg. /home/username/jmeter-ec2).
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
-    LOCAL_HOME="[Your local project directory, created above, eg. /home/username/someproject]"
+    LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"
         The script needs to know a location remotely where it can read and write data from while it runs.
     REMOTE_HOME="/tmp" # This value can be left as the default unless you have a specific requirement to change it
         This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
@@ -62,6 +59,8 @@ Execution Instructions (for Linux based OSs - 32 & 64bit)
         Should be a valid value for where you want the instances to launch.
     USER="ec2-user"
         Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
+    FILEPATH_SEPARATOR="/"
+        If you are running from a Windows machine this would need to be set to "\" - (*** This is not tested ***).
         
 4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory.
     For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using
@@ -72,30 +71,25 @@ Execution Instructions (for Linux based OSs - 32 & 64bit)
    
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
-6. If your testplan has any references to external files such as a CSV file then you will need to update the testplan as follows:
-    a) For each reference to an external file, replace the existing reference with '${test_root}/myproject/data/myfilename.csv'. For example, if you
-    had a Filename value of /home/username/someproject/csvfiles/myfile.csv you should copy the file to the /data directory created above and replace
-    the value in the Filename field with '${test_root}/someproject/data/myfile.csv'
-    b) Create a new User Defined Variable at the root of the testplan called test_root with a value of ${__P(test.root,/home/username/someproject)}
-        
-        Note. test.root (Note the use of the '.' not underscore) is passed to the testplan from the command line by the jmeter-ec2 script. The command
-            '-Jtest.root=$REMOTE_HOME' tells JMeter to use the value of $REMOTE_HOME (eg. /tmp) for this variable. Then, the test will look for the csv
-            file at /tmp/someproject/data/myfile.csv. ${__P(test.root,/home/username/someproject)} also provides a default value, '/home/username/someproject',
-            if when the testplan is executed the test.root value is not specified then the default is used instead. This allows the testplan to be run
-            locally and remotely without having to edit the testplan.
+6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject)
 
-7. Steps reuired for the dynamic distribution business.
-
-[The files example.jmx and example.csv are given to demonstrate steps 6 & 7 above.]
-
-8. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject)
-
-9. Type './jmeter-ec2 someproject 1'
-        Where 'someproject' is the name of the project directory and jmx file and '1' is the number of instances you wish to spread the test over.
+7. Type: ./jmeter-ec2.sh someproject 1
+        Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over.
         You may need to run 'chmod u+x jmeter-ec2.sh' if this file does not already have executable permissions.
         You may need to run 'chmod u+x jmeter-ec2.properties' if this file does not already have executable permissions.
         
-        
+
+Notes:
+It is not uncommon for an instance to fail to start, this is part of using the Cloud and for that reason this script will dynamically respond to this
+    event by adjusting the number of instances that are used for the test. For example, if you request 10 instances but 1 fails then the test will be
+    run using only 9 machines. This should not be a problem as the load will still be evenly spread and the end results (the throughput) identical. In a similar
+    fashion, should Amazon not provide all the instances you asked for (each accunt is limited) then the script will also adjust to this scenario.
+    
+Any testplan should always have suitable pacing to regulate throughput. This script distributes load based on threads, it is assumed that these threads
+    are setup with suitable timers. If not, adding more hardware could create unpredictable results.
+
+
+
 Further details:
   http://www.http503.com/
 
