@@ -61,6 +61,11 @@ Execution Instructions (for Linux based OSs - 32 & 64bit)
         Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
     FILEPATH_SEPARATOR="/"
         If you are running from a Windows machine this would need to be set to "\" - (*** This is not tested ***).
+    RUNNINGTOTAL_INTERVAL="3"
+        How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results
+        listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The
+        summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to
+        15 seconds, like this we default to summary updates every 45 seconds.
         
 4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory.
     For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using
