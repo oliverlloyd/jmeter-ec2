@@ -413,7 +413,9 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
     i=$(( $i + 1))
     
     # this value should be greater than the Generate Summary Results interval set in jmeter.properties (summariser.interval=15)
-    sleep 16;
+    # to be certain, we read the value in here and adjust the wait to match (prevents lots of duplicates eing written to the screen)
+    summariser_interval=$(echo awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)  
+    sleep $summariser_interval;
     
     # we rely on JM to keep track of overall test totals (via Results =) so we only need keep count of values over multiple instances
     # there's no need for a running total outside of this loop so we reinitialise the vars here.
