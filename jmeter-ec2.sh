@@ -498,8 +498,13 @@ for (( i=0; i<$INSTANCE_COUNT; i++ )) ; do
     cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
 done
-sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
+sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
+# JMeter only records thread counts over each host so we adjust them here
+awk 'BEGIN { FS = "," } ; {print $1","$2","$3","$4","$5","$6","$7","$8","$9","$10*'"$INSTANCE_COUNT"'","$11","$12","$13}' \
+                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl >> \
+                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
 mkdir -p $LOCAL_HOME/$PROJECT/results/
 mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
 echo "complete"
