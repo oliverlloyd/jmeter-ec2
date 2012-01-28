@@ -99,4 +99,4 @@ Further details:
   http://www.http503.com/
 
 The source repository is at:
-  https://github.com/oliverlloyd/jmeter-ec2.git
+  https://github.com/oliverlloyd/jmeter-ec2
