@@ -225,17 +225,8 @@ fi
 
 # scp the test files onto each host
 echo -n "copying test files to $INSTANCE_COUNT server(s)..."
-# create $PROJECT dir
-echo -n "$PROJECT dir.."
-# create poject directory
 for host in ${hosts[@]} ; do
-    (ssh -n -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                     -i $PEM_PATH/$PEM_FILE.pem \
                                      $USER@$host mkdir \
-                                     $REMOTE_HOME/$PROJECT) &
-done
-wait
-echo -n "done...."
 
 # scp jmx dir
 echo -n "jmx files.."
