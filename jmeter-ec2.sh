@@ -319,10 +319,16 @@ done
 echo
 echo
 
-echo "========================================================= START OF JMETER-EC2 TEST ================================================================================"
-echo "Test started at $(date)"
 # read the results data and print updates to the screen
-echo "waiting for output..."
+
+# sleep_interval - how often we poll the jmeter output for results
+# this value should be the same as the Generate Summary Results interval set in jmeter.properties
+# to be certain, we read the value in here and adjust the wait to match (this prevents lots of duplicates being written to the screen)
+sleep_interval=$(awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
+runningtotal_seconds=$((RUNNINGTOTAL_INTERVAL*sleep_interval))
+echo "=================================================================== START OF JMETER-EC2 TEST ================================================================================"
+echo "JMeter started at $(date)                                                                 updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds"
+echo "waiting for the test to start..."
 echo
 # TO DO: Are thse required?
 count_total=0
