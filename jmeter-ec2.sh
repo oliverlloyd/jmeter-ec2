@@ -405,7 +405,7 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
                     echo "$screenupdate | host: $host" # write results to screen
                 done #<<<"${hosts_str}" # next host
                 echo
-                echo "$(date) [RUNNING TOTALS]: count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+                echo "$(date) [RUNNING TOTALS]: current count: $count_overallhosts, current avg: $avg_overallhosts (ms), current tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
                 echo
             fi
         fi
@@ -453,7 +453,7 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 # display final results
 echo
 echo
-echo "$(date) [OVERALL RESULTS]: count: $count_overallhosts, avg: $avg_overallhosts (ms), tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+echo "$(date) [FINAL RESULTS]: total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
 echo
 echo "========================================================= END OF JMETER-EC2 TEST =================================================================================="
 echo
