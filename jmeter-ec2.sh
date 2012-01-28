@@ -296,7 +296,6 @@ echo
 #
 # TO DO: Temp files are a poor way to track multiple subshells - improve?
 #
-echo
 echo "starting jmeter on:"
 for host in ${hosts[@]} ; do
     echo $host
@@ -322,11 +321,12 @@ echo
 # this value should be the same as the Generate Summary Results interval set in jmeter.properties
 # to be certain, we read the value in here and adjust the wait to match (this prevents lots of duplicates being written to the screen)
 sleep_interval=$(awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
-runningtotal_seconds=$((RUNNINGTOTAL_INTERVAL*sleep_interval))
-echo "=================================================================== START OF JMETER-EC2 TEST ================================================================================"
-echo "JMeter started at $(date)                                                                 updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds"
-echo "waiting for the test to start..."
-echo
+runningtotal_seconds=$(echo "$RUNNINGTOTAL_INTERVAL * $sleep_interval" | bc)
+echo "JMeter started at $(date)"
+echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
+echo "> [updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds]"
+echo ">"
+echo "> waiting for the test to start..."
 # TO DO: Are thse required?
 count_total=0
 avg_total=0
@@ -345,7 +345,7 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
         if [[ -n "$check" ]] ; then # not null
             if [ $check == "Generate" ] ; then # test has begun
                 screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1)
-                echo "$(date +%T): $screenupdate | host: $host" # write results to screen
+                echo "> $(date +%T): $screenupdate | host: $host" # write results to screen
                 
                 # get the latest values
                 count=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
@@ -389,14 +389,13 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
             
             # now write out the data to the screen
             if [ $wait == 0 ] ; then # each file is ready to summarise
-                echo ""
                 for host in ${hosts[@]} ; do
                     screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1)
-                    echo "$(date +%T): $screenupdate | host: $host" # write results to screen
+                    echo "> $(date +%T): $screenupdate | host: $host" # write results to screen
                 done
-                echo
-                echo "$(date +%T): [RUNNING TOTALS] current count: $count_overallhosts, current avg: $avg_overallhosts (ms), current tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
-                echo
+                echo ">"
+                echo "> $(date +%T): [RUNNING TOTALS] current count: $count_overallhosts, current avg: $avg_overallhosts (ms), current tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+                echo ">"
             fi
         fi
     fi
@@ -439,11 +438,11 @@ done
 avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 
 # display final results
-echo
-echo
-echo "$(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
-echo
-echo "=================================================================== END OF JMETER-EC2 TEST =================================================================================="
+echo ">"
+echo ">"
+echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+echo ">"
+echo "===================================================================== END OF JMETER-EC2 TEST =================================================================================="
 echo
 echo
 
