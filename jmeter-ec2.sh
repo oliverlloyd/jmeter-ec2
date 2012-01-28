@@ -225,8 +225,6 @@ fi
 
 # scp the test files onto each host
 echo -n "copying test files to $INSTANCE_COUNT server(s)..."
-for host in ${hosts[@]} ; do
-                                     $USER@$host mkdir \
 
 # scp jmx dir
 echo -n "jmx files.."
@@ -319,7 +317,6 @@ done
 echo
 echo
 
-# read the results data and print updates to the screen
 
 # sleep_interval - how often we poll the jmeter output for results
 # this value should be the same as the Generate Summary Results interval set in jmeter.properties
@@ -337,7 +334,6 @@ count_overallhosts=0
 avg_overallhosts=0
 tps_overallhosts=0
 errors_overallhosts=0
-
 i=1
 firstmodmatch="TRUE"
 res=0
@@ -349,7 +345,7 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
         if [[ -n "$check" ]] ; then # not null
             if [ $check == "Generate" ] ; then # test has begun
                 screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1)
-                echo "$screenupdate | host: $host" # write results to screen
+                echo "$(date +%T): $screenupdate | host: $host" # write results to screen
                 
                 # get the latest values
                 count=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $5}') # pull out the current count
@@ -376,43 +372,37 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
     # calculate the average respone time over all hosts
     avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
     
-    # every n loops print a running summary (if each host is running)
-    n=3 # could be passed in?
-    mod=$(echo "$i % $n"|bc)
+    # every RUNNINGTOTAL_INTERVAL loops print a running summary (if each host is running)
+    mod=$(echo "$i % $RUNNINGTOTAL_INTERVAL"|bc)
     if [ $mod == 0 ] ; then
         if [ $firstmodmatch == "TRUE" ] ; then # don't write summary results the first time (because it's not useful)
             firstmodmatch="FALSE"
         else
             # first check the results files to make sure data is available
             wait=0
-            #while read host ; do
             for host in ${hosts[@]} ; do
                 result_count=$(grep -c "Results =" $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out)
                 if [ $result_count = 0 ] ; then
                     wait=1
                 fi
-            done #<<<"${hosts_str}" # next host
+            done
             
             # now write out the data to the screen
             if [ $wait == 0 ] ; then # each file is ready to summarise
                 echo ""
-                #while read host ; do
                 for host in ${hosts[@]} ; do
                     screenupdate=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1)
-                    echo "$screenupdate | host: $host" # write results to screen
-                done #<<<"${hosts_str}" # next host
+                    echo "$(date +%T): $screenupdate | host: $host" # write results to screen
+                done
                 echo
-                echo "$(date) [RUNNING TOTALS]: current count: $count_overallhosts, current avg: $avg_overallhosts (ms), current tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+                echo "$(date +%T): [RUNNING TOTALS] current count: $count_overallhosts, current avg: $avg_overallhosts (ms), current tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
                 echo
             fi
         fi
     fi
     i=$(( $i + 1))
     
-    # this value should be greater than the Generate Summary Results interval set in jmeter.properties (summariser.interval=15)
-    # to be certain, we read the value in here and adjust the wait to match (prevents lots of duplicates eing written to the screen)
-    summariser_interval=$(echo awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)  
-    sleep $summariser_interval;
+    sleep $sleep_interval
     
     # we rely on JM to keep track of overall test totals (via Results =) so we only need keep count of values over multiple instances
     # there's no need for a running total outside of this loop so we reinitialise the vars here.
@@ -423,14 +413,13 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
     tps_overallhosts=0
     errors_overallhosts=0
     
-    # check again to see if the test is complete (inside the loop)
+    # check to see if the test is complete
     res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*jmeter.out | awk -F: '{ s+=$NF } END { print s }')
 done
 # test complete
 
 
 # now the test is complete calculate a final summary and write to the screen
-#while read host ; do
 for host in ${hosts[@]} ; do
     # get the final summary values
     count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $5}')
@@ -444,7 +433,7 @@ for host in ${hosts[@]} ; do
     avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
     tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
     errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
-done #<<<"${hosts_str}" # next host
+done
 
 # calculate averages over all hosts
 avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
@@ -452,9 +441,9 @@ avg_overallhosts=$(echo "$avg_overallhosts/$INSTANCE_COUNT" | bc)
 # display final results
 echo
 echo
-echo "$(date) [FINAL RESULTS]: total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+echo "$(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
 echo
-echo "========================================================= END OF JMETER-EC2 TEST =================================================================================="
+echo "=================================================================== END OF JMETER-EC2 TEST =================================================================================="
 echo
 echo
 
@@ -467,9 +456,8 @@ rm $LOCAL_HOME/$PROJECT/working*
 
 
 
-# download the results
+# download the results TO DO: use array index, not counter
 counter=0
-#while read host ; do
 for host in ${hosts[@]} ; do
     echo -n "downloading results from $host..."
     scp -q -o UserKnownHostsFile=/dev/null \
@@ -479,7 +467,7 @@ for host in ${hosts[@]} ; do
                                  $LOCAL_HOME/$PROJECT/
     counter=$((counter+1))
     echo "$LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl complete"
-done #<<<"${hosts_str}" # next host
+done
 echo
 
 
@@ -488,7 +476,6 @@ echo
 echo "terminating instance(s)..."
 ec2-terminate-instances $instanceids
 echo
-
 
 
 # process the files into one jtl results file
