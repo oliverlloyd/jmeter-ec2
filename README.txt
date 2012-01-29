@@ -1,15 +1,14 @@
 JMeter ec2 Script
 -----------------------------
 
-This shell script will allow you to run your local JMeter jmx files using Amazon's EC2 service. It will dynamically install Java and Apache JMeter (2.5.1) using
-SUSE Linux AMIs, and it will run your test over as many instances as you wish (or are allowed to create by Amazon - the default is 20) automatically
-ajusting the test parameters to evenly distribute the load. The script will collate the results from each host in real time and display
-the output of the Generate Summary Results listener as the test is running (both per individual host and an agregated view across all hosts).
-Once execution is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual
-JMeter listeners.
+This shell script will allow you to run your local JMeter jmx files using Amazon's EC2 service. It will dynamically install Java and Apache JMeter
+(2.5.1) using SUSE Linux AMIs, and it will run your test over as many instances as you wish (or are allowed to create by Amazon - the default is 20)
+automatically ajusting the test parameters to evenly distribute the load. It will collate the results from each host in real time and display the
+output of the Generate Summary Results listener as the test is running (both per individual host and an agregated view across all hosts). Once execution
+is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual JMeter
+listeners.
 
 TO DO:
-This project is in development. The following features are pending.
 -- Accept jmx filename as a parameter (not requiring that it be named the same as the directory)
 -- Accept a list of hosts instead of launching new ones - useful for repetative testing and custom AMIs
 -- Accept a list of elastic IPs to be assigned to new hosts
@@ -27,7 +26,7 @@ Pre-requisits
 -- Testplans should have a Generate Summary Results Listener present and enabled (no other listeners are required).
 
 
-Execution Instructions (for Linux based OSs - 32 & 64bit)
+Execution Instructions (for UNIX based OSs)
 1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script.
     Under this directory just created, either:
         a) Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then
