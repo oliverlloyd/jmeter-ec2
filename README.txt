@@ -96,7 +96,7 @@ Any testplan should always have suitable pacing to regulate throughput. This scr
 
 
 Further details:
-  http://www.http503.com/
+  http://www.http503.com/2012/jmeter-ec2/
 
 The source repository is at:
   https://github.com/oliverlloyd/jmeter-ec2
