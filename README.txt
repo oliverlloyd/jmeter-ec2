@@ -13,6 +13,7 @@ This project is in development. The following features are pending.
 -- Accept jmx filename as a parameter (not requiring that it be named the same as the directory)
 -- Accept a list of hosts instead of launching new ones - useful for repetative testing and custom AMIs
 -- Accept a list of elastic IPs to be assigned to new hosts
+-- Create a feature to allow a stop request to be sent to running tests (rather than just terminating the instances)
 
 
 Usage: ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]*
@@ -28,17 +29,20 @@ Pre-requisits
 
 Execution Instructions (for Linux based OSs - 32 & 64bit)
 1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script.
-    Under this directory just created, create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then
-    below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
-    
-        /home/username/jmeter-ec2/
-        /home/username/jmeter-ec2/myproject/
-        /home/username/jmeter-ec2/myproject/jmx/
-        /home/username/jmeter-ec2/myproject/data/
+    Under this directory just created, either:
+        a) Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then
+            below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
+
+                /home/username/jmeter-ec2/
+                /home/username/jmeter-ec2/myproject/
+                /home/username/jmeter-ec2/myproject/jmx/
+                /home/username/jmeter-ec2/myproject/data/
+                
+    or b) Extract the contents of the example-project.zip file.
     
     Note. '/home/username/jmeter-ec2' can be anything so long as it is accessible and specified in the properties file.
 
-2. Download all files from https://github.com/oliverlloyd/jmeter-ec2.git and place them in the root directory (eg. /home/username/jmeter-ec2).
+2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
     LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"
