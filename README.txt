@@ -8,8 +8,8 @@ By default it will launch the required hardware using Amazon EC2 (ec2 mode)using
 Unlike distributed mode, you do not need to adjust the test parameters to ensure even distribution of the load; the script will automatically adjust the thread counts based on how many hosts are in use. As the test is running it will collate the results from each host in real time and display an output of the Generate Summary Results listener to the screen (showing both results host by host and an aggregated view for the entire run). Once execution is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual JMeter listeners.
 
 
-Further details:
-  http://www.http503.com/2012/jmeter-ec2/
+Further details and idiot-level step by step instructions:
+    http://www.http503.com/2012/jmeter-ec2/
 
 TO DO:
 -- Accept jmx filename as a parameter (not requiring that it be named the same as the directory)
