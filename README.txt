@@ -1,20 +1,11 @@
 JMeter ec2 Script
 -----------------------------
 
-This shell script will allow you to run your local JMeter jmx files either using Amazon's EC2 service or you can provide it with
-a simple, comma-delimeted list of hosts to use. It does not use Distributed mode to run the test so it is effectively infinitely
-scalable (Distributed mode means all results are written to a central location which at high volumes can create a bottleneck).
+This shell script will allow you to run your local JMeter jmx files either using Amazon's EC2 service or you can provide it with a simple, comma-delimeted list of hosts to use. It does not use Distributed mode to run the test so it is effectively infinitely scalable (Distributed mode means all results are written to a central location which at high volumes can create a bottleneck).
 
-By default it will launch the required hardware using Amazon EC2 (ec2 mode)using SUSE Linux AMIs dynamically installing Java and
-Apache JMeter (2.5.1). In this mode you can run your test over as many instances as you wish (or are allowed to create by Amazon
-- the default is 20). Alternatively, you can pass in a list of pre-prepared hostnames and the test load will be distributed over
-these.
+By default it will launch the required hardware using Amazon EC2 (ec2 mode)using SUSE Linux AMIs dynamically installing Java and Apache JMeter (2.5.1). In this mode you can run your test over as many instances as you wish (or are allowed to create by Amazon - the default is 20). Alternatively, you can pass in a list of pre-prepared hostnames and the test load will be distributed over these.
 
-Unlike distributed mode, you do not need to adjust the test parameters to ensure even distribution of the load; the script will
-automatically adjust the thread counts based on how many hosts are in use. As the test is running it will collate the results from
-each host in real time and display an output of the Generate Summary Results listener to the screen (showing both results host by
-host and an aggregated view for the entire run). Once execution is complete it will download each host's jtl file and collate them
-all together to give a single jtl file that can be viewed using the usual JMeter listeners.
+Unlike distributed mode, you do not need to adjust the test parameters to ensure even distribution of the load; the script will automatically adjust the thread counts based on how many hosts are in use. As the test is running it will collate the results from each host in real time and display an output of the Generate Summary Results listener to the screen (showing both results host by host and an aggregated view for the entire run). Once execution is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual JMeter listeners.
 
 
 Further details:
@@ -74,19 +65,13 @@ Execution Instructions (for UNIX based OSs)
     USER="ec2-user"
         (only in ec2 mode) Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
     RUNNINGTOTAL_INTERVAL="3"
-        How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results
-        listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The
-        summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to
-        15 seconds, like this we default to summary updates every 45 seconds.
+        How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
     REMOTE_HOSTS=""
         If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
         
-4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory.
-    For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using
-    LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
+4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
     
-        Note. This naming convention allows the script to work seemlessly over multiple projects (so long as they are all located in the same root) but
-            it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
+        Note. This naming convention allows the script to work seemlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
    
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
@@ -100,13 +85,9 @@ Execution Instructions (for UNIX based OSs)
         
 
 Notes:
-It is not uncommon for an instance to fail to start, this is part of using the Cloud and for that reason this script will dynamically respond to this
-    event by adjusting the number of instances that are used for the test. For example, if you request 10 instances but 1 fails then the test will be
-    run using only 9 machines. This should not be a problem as the load will still be evenly spread and the end results (the throughput) identical. In a similar
-    fashion, should Amazon not provide all the instances you asked for (each accunt is limited) then the script will also adjust to this scenario.
+It is not uncommon for an instance to fail to start, this is part of using the Cloud and for that reason this script will dynamically respond to this event by adjusting the number of instances that are used for the test. For example, if you request 10 instances but 1 fails then the test will be run using only 9 machines. This should not be a problem as the load will still be evenly spread and the end results (the throughput) identical. In a similar fashion, should Amazon not provide all the instances you asked for (each accunt is limited) then the script will also adjust to this scenario.
     
-Any testplan should always have suitable pacing to regulate throughput. This script distributes load based on threads, it is assumed that these threads
-    are setup with suitable timers. If not, adding more hardware could create unpredictable results.
+Any testplan should always have suitable pacing to regulate throughput. This script distributes load based on threads, it is assumed that these threads are setup with suitable timers. If not, adding more hardware could create unpredictable results.
 
 
 
