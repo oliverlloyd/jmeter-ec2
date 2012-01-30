@@ -29,60 +29,68 @@ Pre-requisits
 
 
 Execution Instructions (for UNIX based OSs)
-1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script.
-    Under this directory just created, either:
-        a) Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then
-            below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
+1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script. Under this directory just created, either:
+
+a) Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
 
                 /home/username/jmeter-ec2/
                 /home/username/jmeter-ec2/myproject/
                 /home/username/jmeter-ec2/myproject/jmx/
                 /home/username/jmeter-ec2/myproject/data/
                 
-    or b) Extract the contents of the example-project.zip file.
+b) Extract the contents of the example-project.zip file.
     
-    Note. '/home/username/jmeter-ec2' can be anything so long as it is accessible and specified in the properties file.
+Note. '/home/username/jmeter-ec2' can be anything so long as it is accessible and specified in the properties file.
 
 2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
-    LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"
-        The script needs to know a location remotely where it can read and write data from while it runs.
-    REMOTE_HOME="/tmp" # This value can be left as the default unless you have a specific requirement to change it
-        This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
-    AMI_ID="[A linix based AMI, eg. ami-c787bbb3]"
-        (only in ec2 mode) Recommended AMIs provided. Both Java and JMeter are installed by the script and are not required.
-    INSTANCE_TYPE="t1.micro"
-        (only in ec2 mode) This depends on the type of AMI - it must be available for the AMI used.
-    INSTANCE_SECURITYGROUP="jmeter"
-        (only in ec2 mode) The name of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
-    PEM_FILE="olloyd-eu"
-        (only in ec2 mode) Your Amazon key file - obviously must be installed locally.
-    PEM_PATH="/Users/oliver/.ec2"
-        (only in ec2 mode) The DIRECTORY where the Amazon PEM file is located. No trailing '/'!
-    INSTANCE_AVAILABILITYZONE="eu-west-1b"
-        (only in ec2 mode) Should be a valid value for where you want the instances to launch.
-    USER="ec2-user"
-        (only in ec2 mode) Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
-    RUNNINGTOTAL_INTERVAL="3"
-        How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
-    REMOTE_HOSTS=""
-        If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
+
+LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"
+The script needs to know a location remotely where it can read and write data from while it runs.
+
+REMOTE_HOME="/tmp" # This value can be left as the default unless you have a specific requirement to change it
+This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
+
+AMI_ID="[A linix based AMI, eg. ami-c787bbb3]"
+(only in ec2 mode) Recommended AMIs provided. Both Java and JMeter are installed by the script and are not required.
+
+INSTANCE_TYPE="t1.micro"
+(only in ec2 mode) This depends on the type of AMI - it must be available for the AMI used.
+
+INSTANCE_SECURITYGROUP="jmeter"
+(only in ec2 mode) The name of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
+
+PEM_FILE="olloyd-eu"
+(only in ec2 mode) Your Amazon key file - obviously must be installed locally.
+
+PEM_PATH="/Users/oliver/.ec2"
+(only in ec2 mode) The DIRECTORY where the Amazon PEM file is located. No trailing '/'!
+
+INSTANCE_AVAILABILITYZONE="eu-west-1b"
+(only in ec2 mode) Should be a valid value for where you want the instances to launch.
+
+USER="ec2-user"
+(only in ec2 mode) Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
+
+RUNNINGTOTAL_INTERVAL="3"
+How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
+
+REMOTE_HOSTS=""
+If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
         
 4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
     
-        Note. This naming convention allows the script to work seemlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
+Note. This naming convention allows the script to work seemlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
    
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
 6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject)
 
 7. Type: ./jmeter-ec2.sh someproject 1
-        Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over. If
-        you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
-        You may need to run 'chmod u+x jmeter-ec2.sh' if this file does not already have executable permissions.
-        You may need to run 'chmod u+x jmeter-ec2.properties' if this file does not already have executable permissions.
-        
+
+Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
+
 
 Notes:
 It is not uncommon for an instance to fail to start, this is part of using the Cloud and for that reason this script will dynamically respond to this event by adjusting the number of instances that are used for the test. For example, if you request 10 instances but 1 fails then the test will be run using only 9 machines. This should not be a problem as the load will still be evenly spread and the end results (the throughput) identical. In a similar fashion, should Amazon not provide all the instances you asked for (each accunt is limited) then the script will also adjust to this scenario.
