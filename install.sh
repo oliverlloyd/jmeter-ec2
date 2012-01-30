@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# jmeter-ec2 - Install Script
+# jmeter-ec2 - Install Script (Runs on remote ec2 server)
 #
 
 REMOTE_HOME=$1
@@ -23,4 +23,8 @@ fi
 # install jmeter
 wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/jakarta-jmeter-2.5.1.tgz
 tar -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz
+
+# install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
+wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
+mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/jakarta-jmeter-2.5.1/lib/ext/
 echo "software installed"
