@@ -7,131 +7,141 @@ DATETIME=$(date "+%s")
 . jmeter-ec2.properties
 
 cd $EC2_HOME
-echo
-echo "   --------------------------------------------------------------------------------"
-echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instance(s)"
-echo "   --------------------------------------------------------------------------------"
-echo
-echo
 
-# create the instance(s) and capture the instance id(s)
-echo -n "requesting $INSTANCE_COUNT instance(s)..."
-instanceids=$(ec2-run-instances \
-            --key $PEM_FILE \
-            -t $INSTANCE_TYPE \
-            -g $INSTANCE_SECURITYGROUP \
-            -n 1-$INSTANCE_COUNT \
-            --availability-zone \
-            $INSTANCE_AVAILABILITYZONE $AMI_ID \
-            | awk '/^INSTANCE/ {print $2}')
-# check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
-# less than the expected number is given wthout failing the test.
-countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
-if [ "$countof_instanceids" = 0 ] ; then
+
+# if REMOTE_HOSTS is not set then no hosts have been specified to run the test on so we will request them from Amazon
+if [ ! -n "$REMOTE_HOSTS" ] ; then
     echo
-    echo "Amazon did not supply any instances, exiting"
+    echo "   -------------------------------------------------------------------------------------"
+    echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instance(s)"
+    echo "   -------------------------------------------------------------------------------------"
     echo
-    exit
-fi
-if [ $countof_instanceids != $INSTANCE_COUNT ] ; then
-    echo "$countof_instanceids instance(s) were given by Amazon, the test will continue using only these instance(s)."
-    INSTANCE_COUNT=$countof_instanceids
-else
-    echo "success"
-fi
-echo
-
-
-
-# wait for each instance to be fully operational
-status_check_count=0
-status_check_limit=45
-status_check_limit=`echo "$status_check_limit + $countof_instanceids" | bc` # increase wait time based on instance count
-echo -n "waiting for instance status checks to pass (this can take several minutes)..."
-count_passed=0
-while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt $status_check_limit ]
-do
-    echo -n .
-    status_check_count=$(( $status_check_count + 1))
-    count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
-    sleep 1
-done
-
-if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==INSTANCE_COUNT
-    # get hostname and build the list used later in the script
-    hosts=(`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`)
-    echo "all hosts ready"
-else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
-    original_count=$countof_instanceids
-    # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
-    instanceids_clean=`echo $instanceids | tr '\n' ' '`
-    # filter requested instances for only those that started well
-    healthy_instanceids=`ec2-describe-instance-status $instanceids \
-                        --filter instance-status.reachability=passed \
-                        --filter system-status.reachability=passed \
-                        | awk '/INSTANCE\t/ {print $2}'`
-    if [ -z "$healthy_instanceids" ] ; then
-        countof_instanceids=0
-        echo "no instances successfully initialised, exiting"
+    echo
+    
+    # default to 1 instance if a count is not specified
+    if [ ! -n "$INSTANCE_COUNT+x" ] ; then INSTANCE_COUNT=1; fi
+    
+    # create the instance(s) and capture the instance id(s)
+    echo -n "requesting $INSTANCE_COUNT instance(s)..."
+    instanceids=$(ec2-run-instances \
+                --key $PEM_FILE \
+                -t $INSTANCE_TYPE \
+                -g $INSTANCE_SECURITYGROUP \
+                -n 1-$INSTANCE_COUNT \
+                --availability-zone \
+                $INSTANCE_AVAILABILITYZONE $AMI_ID \
+                | awk '/^INSTANCE/ {print $2}')
+    # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
+    # less than the expected number is given wthout failing the test.
+    countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
+    if [ "$countof_instanceids" = 0 ] ; then
+        echo
+        echo "Amazon did not supply any instances, exiting"
+        echo
         exit
-    else
-        countof_instanceids=`echo $healthy_instanceids | awk '{ total = total + NF }; END { print total+0 }'`
     fi
-    countof_failedinstances=`echo "$original_count - $countof_instanceids"|bc`
-    if [ "$countof_failedinstances" -gt 0 ] ; then # if we still see failed instances then write a message
-        echo "$countof_failedinstances instances(s) failed to start, only $countof_instanceids machine(s) will be used in the test"
+    if [ $countof_instanceids != $INSTANCE_COUNT ] ; then
+        echo "$countof_instanceids instance(s) were given by Amazon, the test will continue using only these instance(s)."
         INSTANCE_COUNT=$countof_instanceids
+    else
+        echo "success"
     fi
-    hosts=(`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`)
+    echo
+    
+    # wait for each instance to be fully operational
+    status_check_count=0
+    status_check_limit=45
+    status_check_limit=`echo "$status_check_limit + $countof_instanceids" | bc` # increase wait time based on instance count
+    echo -n "waiting for instance status checks to pass (this can take several minutes)..."
+    count_passed=0
+    while [ "$count_passed" -ne "$INSTANCE_COUNT" ] && [ $status_check_count -lt $status_check_limit ]
+    do
+        echo -n .
+        status_check_count=$(( $status_check_count + 1))
+        count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+        sleep 1
+    done
+    
+    if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==INSTANCE_COUNT
+        # get hostname and build the list used later in the script
+        hosts=(`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`)
+        echo "all hosts ready"
+    else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
+        original_count=$countof_instanceids
+        # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
+        instanceids_clean=`echo $instanceids | tr '\n' ' '`
+        # filter requested instances for only those that started well
+        healthy_instanceids=`ec2-describe-instance-status $instanceids \
+                            --filter instance-status.reachability=passed \
+                            --filter system-status.reachability=passed \
+                            | awk '/INSTANCE\t/ {print $2}'`
+        if [ -z "$healthy_instanceids" ] ; then
+            countof_instanceids=0
+            echo "no instances successfully initialised, exiting"
+            exit
+        else
+            countof_instanceids=`echo $healthy_instanceids | awk '{ total = total + NF }; END { print total+0 }'`
+        fi
+        countof_failedinstances=`echo "$original_count - $countof_instanceids"|bc`
+        if [ "$countof_failedinstances" -gt 0 ] ; then # if we still see failed instances then write a message
+            echo "$countof_failedinstances instances(s) failed to start, only $countof_instanceids machine(s) will be used in the test"
+            INSTANCE_COUNT=$countof_instanceids
+        fi
+        hosts=(`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`)
+    fi
+    echo
+
+    # scp install.sh
+    echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
+    for host in ${hosts[@]} ; do
+        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                      -i $PEM_PATH/$PEM_FILE.pem \
+                                      $LOCAL_HOME/install.sh \
+                                      $USER@$host:$REMOTE_HOME \
+                                      && echo "done" > $LOCAL_HOME/$PROJECT/$DATETIME-$host-scpinstall.out)
+    done
+    
+    # check to see if the scp call is complete (could just use the wait command here...)
+    res=0
+    while [ "$res" != "$INSTANCE_COUNT" ] ;
+    do
+        echo -n .
+        res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out \
+            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+        sleep 3
+    done
+    echo "complete"
+    echo
+    
+    # Install JAVA JRE & JMeter 2.5.1
+    echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
+    for host in ${hosts[@]} ; do
+        (ssh -nq -o StrictHostKeyChecking=no \
+            -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
+            "$REMOTE_HOME/install.sh $REMOTE_HOME" \
+            > $LOCAL_HOME/$PROJECT/$DATETIME-$host-install.out) &
+    done
+    
+    # check to see if the install scripts are complete
+    res=0
+    while [ "$res" != "$INSTANCE_COUNT" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
+        echo -n .
+        res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out \
+            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+        sleep 3
+    done
+    echo "complete"
+    echo
+else # the property REMOTE_HOSTS is set so we wil use this list of predefined hosts instead
+    hosts=(`echo $REMOTE_HOSTS | tr "," "\n" | tr -d ' '`)
+    INSTANCE_COUNT=${#hosts[@]}
+    echo
+    echo "   -------------------------------------------------------------------------------------"
+    echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT predefined host(s)"
+    echo "   -------------------------------------------------------------------------------------"
+    echo
+    echo
 fi
-echo
-
-
-
-# scp install.sh
-echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
-for host in ${hosts[@]} ; do
-    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                  -i $PEM_PATH/$PEM_FILE.pem \
-                                  $LOCAL_HOME/install.sh \
-                                  $USER@$host:$REMOTE_HOME \
-                                  && echo "done" > $LOCAL_HOME/$PROJECT/$DATETIME-$host-scpinstall.out)
-done
-
-# check to see if the scp call is complete
-# (could just use the wait command here...)
-res=0
-while [ "$res" != "$INSTANCE_COUNT" ] ;
-do
-    echo -n .
-    res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out \
-        | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-    sleep 3
-done
-echo "complete"
-echo
-
-
-
-# Install JAVA JRE & JMeter 2.5.1
-echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
-for host in ${hosts[@]} ; do
-    (ssh -nq -o StrictHostKeyChecking=no \
-        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
-        "$REMOTE_HOME/install.sh $REMOTE_HOME" \
-        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-install.out) &
-done
-
-# check to see if the install scripts are complete
-res=0
-while [ "$res" != "$INSTANCE_COUNT" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
-    echo -n .
-    res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out \
-        | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-    sleep 3
-done
-echo "complete"
-echo
 
 
 
@@ -147,9 +157,9 @@ filepaths=$(awk 'BEGIN { FS = ">" } ; /<stringProp name=\"filename\">[^<]*<\/str
 i=1
 while read filepath ; do
     if [ -n "$filepath" ] ; then # this entry is blank so skip it
-        # extract the filename from the filepath using the property FILEPATH_SEPARATOR
-        # TO DO: This code currently will not replace filenames or paths that have '${}' in them.
-        filename=$( echo $filepath | awk -F"$FILEPATH_SEPARATOR" '{print $NF}' )
+        # extract the filename from the filepath using '/' separator
+        # TO DO: This code currently will not replace filenames or paths that have variable braces '${}' in them.
+        filename=$( echo $filepath | awk -F"/" '{print $NF}' )
         endresult="$REMOTE_HOME"/data/"$filename"
         awk '/<stringProp name=\"filename\">[^<]*<\/stringProp>/{c++;if(c=='"$i"') \
                                {sub("filename\">'"$filepath"'<","filename\">'"$endresult"'<")}}1' \
@@ -170,7 +180,7 @@ for y in "${!hosts[@]}" ; do
     cp "$working_jmx" "$working_jmx"_"$y"   
 done
 # now, if we have multiple hosts, we loop through each threadgroup and then use a nested loop within that to edit the file for each host
-if [ "$countof_instanceids" -gt 1 ] ; then # otherwise there's no point adjusting thread counts for a test run on a single instance
+if [ "$INSTANCE_COUNT" -gt 1 ] ; then # otherwise there's no point adjusting thread counts for a test run on a single instance
     # pull out the current values for each thread group
     threadgroup_threadcounts=$(awk 'BEGIN { FS = ">" } ; /ThreadGroup\.num_threads\">[^<]*</ {print $2}' $working_jmx | cut -d'<' -f1) # put the current thread counts into variable
     threadgroup_names=$(awk 'BEGIN { FS = "\"" } ; /ThreadGroup\" testname=\"[^\"]*\"/ {print $6}' $working_jmx) # capture each thread group name
@@ -215,7 +225,6 @@ if [ "$countof_instanceids" -gt 1 ] ; then # otherwise there's no point adjustin
             
             # increment i
             i=$((i+1))
-            
             unset threads
     done
     echo
@@ -279,42 +288,37 @@ echo
 
 
 
-
-
-#
 # run jmeter test plan
-#
-#    ssh -nq -o UserKnownHostsFile=/dev/null \
-#         -o StrictHostKeyChecking=no \
-#        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \             # ec2 key file
-#        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \ # execute jmeter - non GUI - from where it was just installed
-#        -t $REMOTE_HOME/execute.jmx \           # run the jmx file that was uploaded
-#        -Jtest.root=$REMOTE_HOME \                           # pass in the root directory used to run the test to the testplan - used if external data files are present
-#        -Jtest.instances=$INSTANCE_COUNT \                   # pass in to the test how many instances are being used
-#        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \    # write results to the root of remote home
-#        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out    # redirect the output from Generate Summary Results to a local temp file (later read to present real time results to screen)
-#
-# TO DO: Temp files are a poor way to track multiple subshells - improve?
-#
 echo "starting jmeter on:"
 for host in ${hosts[@]} ; do
     echo $host
 done
-counter=0
-for host in ${hosts[@]} ; do
+#
+#    ssh -nq -o UserKnownHostsFile=/dev/null \
+#         -o StrictHostKeyChecking=no \
+#        -i $PEM_PATH/$PEM_FILE.pem $USER@${host[$counter]} \               # ec2 key file
+#        $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \               # execute jmeter - non GUI - from where it was just installed
+#        -t $REMOTE_HOME/execute.jmx \                                      # run the jmx file that was uploaded
+#        -Jtest.root=$REMOTE_HOME \                                         # pass in the root directory used to run the test to the testplan - used if external data files are present
+#        -Jtest.instances=$INSTANCE_COUNT \                                 # pass in to the test how many instances are being used
+#        -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \                  # write results to the root of remote home
+#        > $LOCAL_HOME/$PROJECT/$DATETIME-${host[$counter]}-jmeter.out      # redirect output from Generate Summary Results to a local temp file (read to present real time results to screen)
+#
+# TO DO: Temp files are a poor way to track multiple subshells - improve?
+#
+for counter in ${!hosts[@]} ; do
     ( ssh -nq -o StrictHostKeyChecking=no \
-    -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
+    -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$counter]} \
     $REMOTE_HOME/jakarta-jmeter-2.5.1/bin/jmeter.sh -n \
     -t $REMOTE_HOME/execute.jmx \
     -Jtest.root=$REMOTE_HOME \
     -Jtest.instances=$INSTANCE_COUNT \
     -l $REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
-    > $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out ) &
-    counter=$((counter+1))
+    > $LOCAL_HOME/$PROJECT/$DATETIME-${hosts[$counter]}-jmeter.out ) &
 done
-#done <<<"${hosts_str}"
 echo
 echo
+
 
 
 # sleep_interval - how often we poll the jmeter output for results
@@ -414,9 +418,7 @@ while [ $res != $INSTANCE_COUNT ] ; do # test not complete (count of matches for
     
     # check to see if the test is complete
     res=$(grep -c "end of run" $LOCAL_HOME/$PROJECT/$DATETIME*jmeter.out | awk -F: '{ s+=$NF } END { print s }')
-done
-# test complete
-
+done # test complete
 
 # now the test is complete calculate a final summary and write to the screen
 for host in ${hosts[@]} ; do
@@ -455,26 +457,27 @@ rm $LOCAL_HOME/$PROJECT/working*
 
 
 
-# download the results TO DO: use array index, not counter
-counter=0
-for host in ${hosts[@]} ; do
+# download the results
+for i in ${!hosts[@]} ; do
     echo -n "downloading results from $host..."
     scp -q -o UserKnownHostsFile=/dev/null \
                                  -o StrictHostKeyChecking=no \
                                  -i $PEM_PATH/$PEM_FILE.pem \
-                                 $USER@$host:$REMOTE_HOME/$PROJECT-$DATETIME-$counter.jtl \
+                                 $USER@${hosts[$i]}:$REMOTE_HOME/$PROJECT-$DATETIME-$i.jtl \
                                  $LOCAL_HOME/$PROJECT/
-    counter=$((counter+1))
-    echo "$LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$counter.jtl complete"
+    echo "$LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl complete"
 done
 echo
 
 
 
-# terminate the running instances just created
-echo "terminating instance(s)..."
-ec2-terminate-instances $instanceids
-echo
+# terminate any running instances created
+if [ ! -n "$REMOTE_HOSTS+x" ] ; then
+    echo "terminating instance(s)..."
+    ec2-terminate-instances $instanceids
+    echo
+fi
+
 
 
 # process the files into one jtl results file
@@ -495,9 +498,9 @@ mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/res
 echo "complete"
 echo
 echo
-echo "   --------------------------------------------------------------------------------"
+echo "   -------------------------------------------------------------------------------------"
 echo "                  jmeter-ec2 Automation Script - COMPLETE"
 echo
 echo "   Test Results: $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-complete.jtl"
-echo "   --------------------------------------------------------------------------------"
+echo "   -------------------------------------------------------------------------------------"
 echo
