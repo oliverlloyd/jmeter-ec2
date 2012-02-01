@@ -10,7 +10,24 @@ cd $EC2_HOME
 
 
 # if REMOTE_HOSTS is not set then no hosts have been specified to run the test on so we will request them from Amazon
-if [ ! -n "$REMOTE_HOSTS" ] ; then
+if [ -z "$REMOTE_HOSTS" ] ; then
+    
+    # check if ELASTIC_IPS is set, if it is we need to make sure we have enough of them
+    if [ ! -z "$ELASTIC_IPS" ] ; then # Not Null - same as -n
+        elasticips=(`echo $ELASTIC_IPS | tr "," "\n" | tr -d ' '`)
+        elasticips_count=${#elasticips[@]}
+        if [ "$INSTANCE_COUNT" -gt "$elasticips_count" ] ; then
+            echo
+            echo "You are trying to launch $INSTANCE_COUNT instance but you have only specified $elasticips_count elastic IPs."
+            echo "If you wish to use Staitc IPs for each test instance then you must increase the list of values given for ELASTIC_IPS in the properties file."
+            echo
+            echo "Alternatively, if you set the STATIC_IPS property to \"\" or do not specify it at all then the test will run without trying to assign static IPs."
+            echo
+            echo "Script exiting..."
+            echo
+            exit
+        fi
+    fi
     echo
     echo "   -------------------------------------------------------------------------------------"
     echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instance(s)"
@@ -23,17 +40,18 @@ if [ ! -n "$REMOTE_HOSTS" ] ; then
     
     # create the instance(s) and capture the instance id(s)
     echo -n "requesting $INSTANCE_COUNT instance(s)..."
-    instanceids=$(ec2-run-instances \
+    instanceids=(`ec2-run-instances \
                 --key $PEM_FILE \
                 -t $INSTANCE_TYPE \
                 -g $INSTANCE_SECURITYGROUP \
                 -n 1-$INSTANCE_COUNT \
                 --availability-zone \
                 $INSTANCE_AVAILABILITYZONE $AMI_ID \
-                | awk '/^INSTANCE/ {print $2}')
+                | awk '/^INSTANCE/ {print $2}'`)
+    
     # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
     # less than the expected number is given wthout failing the test.
-    countof_instanceids=`echo $instanceids | awk '{ total = total + NF }; END { print total+0 }'`
+    countof_instanceids=${#instanceids[@]}
     if [ "$countof_instanceids" = 0 ] ; then
         echo
         echo "Amazon did not supply any instances, exiting"
@@ -58,29 +76,29 @@ if [ ! -n "$REMOTE_HOSTS" ] ; then
     do
         echo -n .
         status_check_count=$(( $status_check_count + 1))
-        count_passed=$(ec2-describe-instance-status $instanceids | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+        count_passed=$(ec2-describe-instance-status ${instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
         sleep 1
     done
     
     if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==INSTANCE_COUNT
         # get hostname and build the list used later in the script
-        hosts=(`ec2-describe-instances $instanceids | awk '/INSTANCE/ {print $4}'`)
+        hosts=(`ec2-describe-instances ${instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
         echo "all hosts ready"
     else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
         original_count=$countof_instanceids
         # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
-        instanceids_clean=`echo $instanceids | tr '\n' ' '`
+        #instanceids_clean=`echo $instanceids | tr '\n' ' '`
         # filter requested instances for only those that started well
-        healthy_instanceids=`ec2-describe-instance-status $instanceids \
+        healthy_instanceids=(`ec2-describe-instance-status ${instanceids[@]} \
                             --filter instance-status.reachability=passed \
                             --filter system-status.reachability=passed \
-                            | awk '/INSTANCE\t/ {print $2}'`
-        if [ -z "$healthy_instanceids" ] ; then
+                            | awk '/INSTANCE\t/ {print $2}'`)
+        if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
             countof_instanceids=0
             echo "no instances successfully initialised, exiting"
             exit
         else
-            countof_instanceids=`echo $healthy_instanceids | awk '{ total = total + NF }; END { print total+0 }'`
+            countof_instanceids=${#healthy_instanceids[@]}
         fi
         countof_failedinstances=`echo "$original_count - $countof_instanceids"|bc`
         if [ "$countof_failedinstances" -gt 0 ] ; then # if we still see failed instances then write a message
@@ -88,8 +106,26 @@ if [ ! -n "$REMOTE_HOSTS" ] ; then
             INSTANCE_COUNT=$countof_instanceids
         fi
         hosts=(`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`)
+        instanceids=$healthy_instanceids
     fi
     echo
+    
+    # if provided, assign elastic IPs to each instance
+    if [ ! -z "$ELASTIC_IPS" ] ; then # Not Null - same as -n
+        echo "assigning elastic ips..."
+        for x in "${!instanceids[@]}" ; do
+            ec2-associate-address ${elasticips[x]} -i ${instanceids[x]}
+            hosts[x]=${elasticips[x]}
+            # check for ssh connectivity on the new address
+            while ssh -o StrictHostKeyChecking=no -q -i $PEM_PATH/$PEM_FILE.pem \
+                $USER@${hosts[x]} true && test; \
+                do echo -n .; sleep 1; done
+            # Note. If any IP is already in use on an instance that is still running then the ssh check above will return
+            # a false positive. If this scenario is common you should put a sleep statement here.
+        done
+        echo "complete"
+        echo
+    fi
 
     # scp install.sh
     echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
@@ -472,9 +508,9 @@ echo
 
 
 # terminate any running instances created
-if [ ! -n "$REMOTE_HOSTS+x" ] ; then
+if [ -z "$REMOTE_HOSTS" ]; then
     echo "terminating instance(s)..."
-    ec2-terminate-instances $instanceids
+    ec2-terminate-instances ${instanceids[@]}
     echo
 fi
 

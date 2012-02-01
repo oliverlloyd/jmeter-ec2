@@ -78,7 +78,10 @@ How often running totals are printed to the screen. Based on a count of the summ
 
 REMOTE_HOSTS=""
 If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
-        
+
+ELASTIC_IPS=""
+If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
+
 4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
     
 Note. This naming convention allows the script to work seemlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
