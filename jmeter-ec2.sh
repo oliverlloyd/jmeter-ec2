@@ -181,20 +181,19 @@ fi
 
 
 
-# Create a working jmx file and edit it to adjust thread counts and filepaths
+# Create a working jmx file and edit it to adjust thread counts and filepaths (leave the original jmx intact!)
 cp $LOCAL_HOME/$PROJECT/jmx/$PROJECT.jmx $LOCAL_HOME/$PROJECT/working
 working_jmx="$LOCAL_HOME/$PROJECT/working"
 temp_jmx="$LOCAL_HOME/$PROJECT/temp"
 
 # first filepaths (this will help with things like csv files)
-# edit any 'stringProp filename=' references to use REMOTE_DIR
+# edit any 'stringProp filename=' references to use $REMOTE_DIR in place of whatever local path was being used
 # we assume that the required dat file is copied into the local /data directory
 filepaths=$(awk 'BEGIN { FS = ">" } ; /<stringProp name=\"filename\">[^<]*<\/stringProp>/ {print $2}' $working_jmx | cut -d'<' -f1) # pull out filepath
 i=1
 while read filepath ; do
     if [ -n "$filepath" ] ; then # this entry is blank so skip it
         # extract the filename from the filepath using '/' separator
-        # TO DO: This code currently will not replace filenames or paths that have variable braces '${}' in them.
         filename=$( echo $filepath | awk -F"/" '{print $NF}' )
         endresult="$REMOTE_HOME"/data/"$filename"
         awk '/<stringProp name=\"filename\">[^<]*<\/stringProp>/{c++;if(c=='"$i"') \
@@ -212,7 +211,7 @@ done <<<"$filepaths"
 # and then passes out threads to them on a round robin basis
 # as part of this we begin here by creating a working jmx file for each separate host using _$y to isolate
 for y in "${!hosts[@]}" ; do
-    # for each host create a working copy of the jmx file (leave the original intact!)
+    # for each host create a working copy of the jmx file
     cp "$working_jmx" "$working_jmx"_"$y"   
 done
 # now, if we have multiple hosts, we loop through each threadgroup and then use a nested loop within that to edit the file for each host
@@ -222,15 +221,14 @@ if [ "$INSTANCE_COUNT" -gt 1 ] ; then # otherwise there's no point adjusting thr
     threadgroup_names=$(awk 'BEGIN { FS = "\"" } ; /ThreadGroup\" testname=\"[^\"]*\"/ {print $6}' $working_jmx) # capture each thread group name
     
     # get count of thread groups, show results to screen
-    countofthreadgroups=`echo $threadgroup_threadcounts | awk '{ total = total + NF }; END { print total+0 }'`
+    countofthreadgroups=${#threadgroup_threadcounts[@]}
     echo "editing thread counts - $PROJECT.jmx has $countofthreadgroups threadgroup(s):"
         
-    i=1
     # now we loop through each thread group, editing a separate file for each host each iteration (nested loop)
-    for currentthreadcount in $threadgroup_threadcounts ; do
-            # using modulo we distribute the threads over all hosts
+    for i in ${!threadgroup_threadcounts[@]} ; do
+            # using modulo we distribute the threads over all hosts, building the array 'threads'
             # taking 10(threads)/3(hosts) as an example you would expect two hosts to be given 3 threads and one to be given 4.
-            for (( x=1; x<=$currentthreadcount; x++ )); do
+            for (( x=1; x<=${threadgroup_threadcounts[$i]}; x++ )); do
                 : $(( threads[$(( $x % ${#hosts[@]} ))]++ ))
             done
             
@@ -238,34 +236,21 @@ if [ "$INSTANCE_COUNT" -gt 1 ] ; then # otherwise there's no point adjusting thr
             for y in "${!hosts[@]}" ; do
                 # we're already in a loop for each thread group but awk will parse the entire file each time it is called so we need to
                 # use an index to know when to make the edit
-                # when c (awk's index) matches i (the for loop's index) then a substitution is made
-                awk '/ThreadGroup\.num_threads\">[^<]*</{c++;if(c=='"$i"'){sub("threads\">'"$currentthreadcount"'<","threads\">'"${threads[$y]}"'<")}}1' "$working_jmx"_"$y" > "$temp_jmx"_"$y"
+                # when c (awk's index) matches i (the main for loop's index) then a substitution is made
+                awk '/ThreadGroup\.num_threads\">[^<]*</{c++;if(c=='"$i"'){sub("threads\">'"${threadgroup_threadcounts[$i]}"'<","threads\">'"${threads[$y]}"'<")}}1' "$working_jmx"_"$y" > "$temp_jmx"_"$y"
             
                 # using awk requires the use of a temp file to save the results of the command, update the working file with this file
                 rm "$working_jmx"_"$y"
                 mv "$temp_jmx"_"$y" "$working_jmx"_"$y"
             done
             
-            # get the thread group name
-            z=1
-            for row in $threadgroup_names ; do
-                if [ "$z" -eq "$i" ] ; then
-                    threadgroupname=$row
-                fi
-                # increment x
-                z=$((z+1))
-            done
-            
             # write update to screen
-            echo "...$i) $threadgroupname has $currentthreadcount thread(s), to be distributed over $INSTANCE_COUNT instance(s)"
+            echo "...$i) ${threadgroup_names[$i]} has ${threadgroup_threadcounts[$i]} thread(s), to be distributed over $INSTANCE_COUNT instance(s)"
             
-            # increment i
-            i=$((i+1))
             unset threads
     done
     echo
 fi
-
 
 
 # scp the test files onto each host
