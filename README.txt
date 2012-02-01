@@ -13,13 +13,16 @@ Further details and idiot-level step by step instructions:
 
 TO DO:
 -- Accept jmx filename as a parameter (not requiring that it be named the same as the directory)
--- Accept a list of elastic IPs to be assigned to new hosts
 -- Create a feature to allow a stop request to be sent to running tests (rather than just terminating the instances)
 
 Usage:
-  ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED (if new ec2 instances are required*)]
+  ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED (if ec2 instances are required*)]
 
 *IMPORTANT - There is a limit imposed by Amazon on how many instances can be run [the default is 20 instances - Oct 2011].
+
+Limitations:
+-- You cannot have variables in the field Thread Count, this value must be numeric
+-- File paths cannot be dynamic, any variables in the filepath will not be used but the filename is not changed.
 
 
 Pre-requisits
@@ -38,7 +41,7 @@ a) Create a project directory, something like: '/home/username/jmeter-ec2/myproj
                 /home/username/jmeter-ec2/myproject/jmx/
                 /home/username/jmeter-ec2/myproject/data/
                 
-b) Extract the contents of the example-project.zip file.
+or b) Extract the contents of the example-project.zip file.
     
 Note. '/home/username/jmeter-ec2' can be anything so long as it is accessible and specified in the properties file.
 
