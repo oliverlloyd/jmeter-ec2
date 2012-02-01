@@ -217,8 +217,21 @@ done
 # now, if we have multiple hosts, we loop through each threadgroup and then use a nested loop within that to edit the file for each host
 if [ "$INSTANCE_COUNT" -gt 1 ] ; then # otherwise there's no point adjusting thread counts for a test run on a single instance
     # pull out the current values for each thread group
-    threadgroup_threadcounts=$(awk 'BEGIN { FS = ">" } ; /ThreadGroup\.num_threads\">[^<]*</ {print $2}' $working_jmx | cut -d'<' -f1) # put the current thread counts into variable
-    threadgroup_names=$(awk 'BEGIN { FS = "\"" } ; /ThreadGroup\" testname=\"[^\"]*\"/ {print $6}' $working_jmx) # capture each thread group name
+    threadgroup_threadcounts=(`awk 'BEGIN { FS = ">" } ; /ThreadGroup\.num_threads\">[^<]*</ {print $2}' $working_jmx | cut -d'<' -f1`) # put the current thread counts into variable
+    threadgroup_names=(`awk 'BEGIN { FS = "\"" } ; /ThreadGroup\" testname=\"[^\"]*\"/ {print $6}' $working_jmx`) # capture each thread group name
+    
+    # first we check to make sure each threadgroup_threadcounts is numeric
+    for n in ${!threadgroup_threadcounts[@]} ; do
+        case ${threadgroup_threadcounts[$n]} in
+            ''|*[!0-9]*)
+                echo "Error: Thread Group: ${threadgroup_names[$n]} has the value: ${threadgroup_threadcounts[$n]}, which is not numeric - Thread Count must be numeric!"
+                echo
+                echo "Script exiting..."
+                echo
+                exit;;
+                *);;
+        esac
+    done
     
     # get count of thread groups, show results to screen
     countofthreadgroups=${#threadgroup_threadcounts[@]}
