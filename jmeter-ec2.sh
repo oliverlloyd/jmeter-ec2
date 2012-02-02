@@ -211,7 +211,7 @@ while read filepath ; do
             exit
         fi
         awk '/<stringProp name=\"filename\">[^<]*<\/stringProp>/{c++;if(c=='"$i"') \
-                               {sub("filename\">'$filepath'<","filename\">'"$endresult"'<")}}1'  \
+                               {sub("filename\">'"$filepath"'<","filename\">'"$endresult"'<")}}1'  \
                                $working_jmx > $temp_jmx
         rm $working_jmx
         mv $temp_jmx $working_jmx
