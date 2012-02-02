@@ -192,12 +192,19 @@ temp_jmx="$LOCAL_HOME/$PROJECT/temp"
 filepaths=$(awk 'BEGIN { FS = ">" } ; /<stringProp name=\"filename\">[^<]*<\/stringProp>/ {print $2}' $working_jmx | cut -d'<' -f1) # pull out filepath
 i=1
 while read filepath ; do
-    if [ -n "$filepath" ] ; then # this entry is blank so skip it
+    if [ -n "$filepath" ] ; then # this entry is not blank
         # extract the filename from the filepath using '/' separator
         filename=$( echo $filepath | awk -F"/" '{print $NF}' )
         endresult="$REMOTE_HOME"/data/"$filename"
+        if grep -q "$" <<<$filepath; then
+            echo "The path $filepath contains a $ char, this currently fails the awk sub command."
+            echo "Until I get around to fixing this, you'll have to remove these from all filepaths. Sorry."
+            echo
+            echo "Script exiting"
+            #exit
+        fi
         awk '/<stringProp name=\"filename\">[^<]*<\/stringProp>/{c++;if(c=='"$i"') \
-                               {sub("filename\">'"$filepath"'<","filename\">'"$endresult"'<")}}1' \
+                               {sub("filename\">'$filepath'<","filename\">'"$endresult"'<")}}1'  \
                                $working_jmx > $temp_jmx
         rm $working_jmx
         mv $temp_jmx $working_jmx
