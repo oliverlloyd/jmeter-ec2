@@ -21,10 +21,10 @@ else # 64 bit
 fi
 
 # install jmeter
-wget -q -O $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/jakarta-jmeter-2.5.1.tgz
-tar -xf $REMOTE_HOME/jakarta-jmeter-2.5.1.tgz
+wget -q -O $REMOTE_HOME/apache-jmeter-2.6.tgz http://apache.mirror1.spango.com//jmeter/binaries/apache-jmeter-2.6.tgz
+tar -xf $REMOTE_HOME/apache-jmeter-2.6.tgz
 
 # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
 wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
-mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/jakarta-jmeter-2.5.1/lib/ext/
+mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/apache-jmeter-2.6/lib/ext/
 echo "software installed"
