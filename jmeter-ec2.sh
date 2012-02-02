@@ -8,6 +8,13 @@ DATETIME=$(date "+%s")
 
 cd $EC2_HOME
 
+# check project directry exists
+if [ ! -d "$LOCAL_HOME/$PROJECT" ] ; then
+    echo "The directory $LOCAL_HOME/$PROJECT does not exist."
+    echo
+    echo "Script exiting."
+    exit
+fi
 
 # if REMOTE_HOSTS is not set then no hosts have been specified to run the test on so we will request them from Amazon
 if [ -z "$REMOTE_HOSTS" ] ; then
