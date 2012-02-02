@@ -36,7 +36,7 @@ if [ -z "$REMOTE_HOSTS" ] ; then
     echo
     
     # default to 1 instance if a count is not specified
-    if [ ! -n "$INSTANCE_COUNT+x" ] ; then INSTANCE_COUNT=1; fi
+    if [ -z "$INSTANCE_COUNT" ] ; then INSTANCE_COUNT=1; fi
     
     # create the instance(s) and capture the instance id(s)
     echo -n "requesting $INSTANCE_COUNT instance(s)..."
