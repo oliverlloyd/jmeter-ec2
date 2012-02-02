@@ -203,7 +203,6 @@ while read filepath ; do
         # extract the filename from the filepath using '/' separator
         filename=$( echo $filepath | awk -F"/" '{print $NF}' )
         endresult="$REMOTE_HOME"/data/"$filename"
-        echo $filepath
         if [[ $filepath =~ .*\$.* ]] ; then
             echo "The path $filepath contains a $ char, this currently fails the awk sub command."
             echo "Until I get around to fixing this, you'll have to remove these from all filepaths. Sorry."
