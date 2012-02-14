@@ -264,8 +264,14 @@ if [ "$INSTANCE_COUNT" -gt 1 ] ; then # otherwise there's no point adjusting thr
                 # we're already in a loop for each thread group but awk will parse the entire file each time it is called so we need to
                 # use an index to know when to make the edit
                 # when c (awk's index) matches i (the main for loop's index) then a substitution is made
-                awk '/ThreadGroup\.num_threads\">[^<]*</{c++;if(c=='"$i"'){sub("threads\">'"${threadgroup_threadcounts[$i]}"'<","threads\">'"${threads[$y]}"'<")}}1' "$working_jmx"_"$y" > "$temp_jmx"_"$y"
-            
+                findstr="threads\">"${threadgroup_threadcounts[$i]}
+                replacestr="threads\">"${threads[$y]}
+                awk -v "findthis=$findstr" -v "replacewiththis=$replacestr" \
+                                 'BEGIN{c=0} \
+                                 /ThreadGroup\.num_threads\">[^<]*</ \
+                                 {if(c=='"$i"'){sub(findthis,replacewiththis)};c++}1' \
+                                 "$working_jmx"_"$y" > "$temp_jmx"_"$y"
+
                 # using awk requires the use of a temp file to save the results of the command, update the working file with this file
                 rm "$working_jmx"_"$y"
                 mv "$temp_jmx"_"$y" "$working_jmx"_"$y"
