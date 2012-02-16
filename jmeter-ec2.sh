@@ -399,7 +399,8 @@ function runtest() {
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
     echo "> [updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds]"
     echo ">"
-    echo "> waiting for the test to start..."
+    echo "> waiting for the test to start...to stop the test while it is running, press CTRL-C"
+    teststarted=1
     # TO DO: Are thse required?
     count_total=0
     avg_total=0
@@ -510,14 +511,16 @@ function runtest() {
 }
 
 function runcleanup() {
-    # display final results
-    echo ">"
-    echo ">"
-    echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
-    echo ">"
-    echo "===================================================================== END OF JMETER-EC2 TEST =================================================================================="
-    echo
-    echo
+    if [ "$teststarted" -eq 1 ] ; then
+        # display final results
+        echo ">"
+        echo ">"
+        echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+        echo ">"
+        echo "===================================================================== END OF JMETER-EC2 TEST =================================================================================="
+        echo
+        echo
+    fi
     
     
     
@@ -579,14 +582,18 @@ function runcleanup() {
 
 function control_c(){
     # Stop the running test on each host
+    echo
+    echo -n "> Stopping test..."
     for f in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
         -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$f]} \
-        $REMOTE_HOME/$JMETER_VERSION/bin/shutdown.sh) &
+        $REMOTE_HOME/$JMETER_VERSION/bin/shutdown.sh ) &
     done
+    wait
+    echo ">"
     
     runcleanup
-    exit $?
+    exit
 }
 
 # trap keyboard interrupt (control-c)
