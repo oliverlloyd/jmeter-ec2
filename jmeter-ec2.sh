@@ -151,8 +151,12 @@ fi
 
 # Check if remote hosts are up
 for host in ${hosts[@]} ; do
-    ping -c 1 $host > /dev/null 2>&1
-    if [ ! $? -eq 0 ]; then
+    if [ ! "$(ssh -q -q \
+        -o StrictHostKeyChecking=no \
+        -o "BatchMode=yes" \
+        -o "ConnectTimeout 15" \
+        -i $PEM_PATH/$PEM_FILE.pem \
+        $USER@$host echo up 2>&1)" == "up" ] ; then
         echo "Host $host is not responding, script exiting..."
         echo
         exit
