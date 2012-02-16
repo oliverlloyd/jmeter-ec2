@@ -190,7 +190,7 @@ echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
 for host in ${hosts[@]} ; do
     (ssh -nq -o StrictHostKeyChecking=no \
         -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
-        "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall"\
+        "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION"\
         > $LOCAL_HOME/$PROJECT/$DATETIME-$host-install.out) &
 done
 
@@ -338,7 +338,7 @@ if [ -r $LOCAL_HOME/jmeter.properties ] ; then # don't try to upload this option
         (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                       -i $PEM_PATH/$PEM_FILE.pem \
                                       $LOCAL_HOME/jmeter.properties \
-                                      $USER@$host:$REMOTE_HOME/apache-jmeter-2.6/bin/) &
+                                      $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
     done
     wait
     echo -n "done...."
@@ -351,7 +351,7 @@ if [ -r $LOCAL_HOME/jmeter ] ; then # don't try to upload this optional file if 
         (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                       -i $PEM_PATH/$PEM_FILE.pem \
                                       $LOCAL_HOME/jmeter \
-                                      $USER@$host:$REMOTE_HOME/apache-jmeter-2.6/bin/) &
+                                      $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
     done
     wait
     echo "all files uploaded"
@@ -369,7 +369,7 @@ done
 #    ssh -nq -o UserKnownHostsFile=/dev/null \
 #         -o StrictHostKeyChecking=no \
 #        -i $PEM_PATH/$PEM_FILE.pem $USER@${host[$counter]} \               # ec2 key file
-#        $REMOTE_HOME/apache-jmeter-2.6/bin/jmeter.sh -n \               # execute jmeter - non GUI - from where it was just installed
+#        $REMOTE_HOME/$JMETER_VERSION/bin/jmeter.sh -n \               # execute jmeter - non GUI - from where it was just installed
 #        -t $REMOTE_HOME/execute.jmx \                                      # run the jmx file that was uploaded
 #        -Jtest.root=$REMOTE_HOME \                                         # pass in the root directory used to run the test to the testplan - used if external data files are present
 #        -Jtest.instances=$INSTANCE_COUNT \                                 # pass in to the test how many instances are being used
@@ -381,7 +381,7 @@ done
 for counter in ${!hosts[@]} ; do
     ( ssh -nq -o StrictHostKeyChecking=no \
     -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$counter]} \
-    $REMOTE_HOME/apache-jmeter-2.6/bin/jmeter.sh -n \
+    $REMOTE_HOME/$JMETER_VERSION/bin/jmeter.sh -n \
     -t $REMOTE_HOME/execute.jmx \
     -Jtest.root=$REMOTE_HOME \
     -Jtest.instances=$INSTANCE_COUNT \

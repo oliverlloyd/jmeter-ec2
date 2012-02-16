@@ -4,10 +4,12 @@
 #
 
 REMOTE_HOME=$1
+INSTALL_JAVA=$2
+JMETER_VERSION=$3
 
 cd $REMOTE_HOME
 
-if [ $2 -eq 1 ] ; then
+if [ $INSTALL_JAVA -eq 1 ] ; then
     # install java
     bits=`getconf LONG_BIT`
     if [ $bits -eq 32 ] ; then
@@ -22,10 +24,32 @@ if [ $2 -eq 1 ] ; then
 fi
 
 # install jmeter
-wget -q -O $REMOTE_HOME/apache-jmeter-2.6.tgz http://apache.mirror1.spango.com//jmeter/binaries/apache-jmeter-2.6.tgz
-tar -xf $REMOTE_HOME/apache-jmeter-2.6.tgz
+case "$JMETER_VERSION" in
+
+jakarta-jmeter-2.5.1)
+    # JMeter version 2.5.1
+    -wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/$JMETER_VERSION.tgz
+    -tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
+    install_jmeter_plugins
+    ;;
+
+apache-jmeter-*)
+    # JMeter version 2.x
+    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://apache.mirror1.spango.com//jmeter/binaries/$JMETER_VERSION.tgz
+    -tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
+    install_jmeter_plugins
+    ;;
+    
+*)
+    echo "Please check the value of JMETER_VERSION in the properties file, $JMETER_VERSION is not recognised."
+esac
+
+echo "software installed"
+
+
 
 # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
-wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
-mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/apache-jmeter-2.6/lib/ext/
-echo "software installed"
+install_jmeter_plugins() {
+    wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
+    mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/apache-jmeter-2.6/lib/ext/
+}
