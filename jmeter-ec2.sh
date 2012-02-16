@@ -133,51 +133,14 @@ if [ -z "$REMOTE_HOSTS" ] ; then
         echo "complete"
         echo
     fi
-
-    # scp install.sh
-    echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
-    for host in ${hosts[@]} ; do
-        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                      -i $PEM_PATH/$PEM_FILE.pem \
-                                      $LOCAL_HOME/install.sh \
-                                      $USER@$host:$REMOTE_HOME \
-                                      && echo "done" > $LOCAL_HOME/$PROJECT/$DATETIME-$host-scpinstall.out)
-    done
     
-    # check to see if the scp call is complete (could just use the wait command here...)
-    res=0
-    while [ "$res" != "$INSTANCE_COUNT" ] ;
-    do
-        echo -n .
-        res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out \
-            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-        sleep 3
-    done
-    echo "complete"
-    echo
-    
-    # Install JAVA JRE & JMeter 2.6
-    echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
-    for host in ${hosts[@]} ; do
-        (ssh -nq -o StrictHostKeyChecking=no \
-            -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
-            "$REMOTE_HOME/install.sh $REMOTE_HOME" \
-            > $LOCAL_HOME/$PROJECT/$DATETIME-$host-install.out) &
-    done
-    
-    # check to see if the install scripts are complete
-    res=0
-    while [ "$res" != "$INSTANCE_COUNT" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
-        echo -n .
-        res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out \
-            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-        sleep 3
-    done
-    echo "complete"
-    echo
+    # Tell install.sh to attempt to install JAVA
+    attemptjavainstall=1
 else # the property REMOTE_HOSTS is set so we wil use this list of predefined hosts instead
     hosts=(`echo $REMOTE_HOSTS | tr "," "\n" | tr -d ' '`)
     INSTANCE_COUNT=${#hosts[@]}
+    # Tell install.sh to not attempt to install JAVA
+    attemptjavainstall=0
     echo
     echo "   -------------------------------------------------------------------------------------"
     echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT predefined host(s)"
@@ -186,6 +149,57 @@ else # the property REMOTE_HOSTS is set so we wil use this list of predefined ho
     echo
 fi
 
+# Check if remote hosts are up
+for host in ${hosts[@]} ; do
+    ping -c 1 $host > /dev/null 2>&1
+    if [ ! $? -eq 0 ]; then
+        echo "Host $host is not responding, script exiting..."
+        echo
+        exit
+    fi
+done
+
+# scp install.sh
+echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
+for host in ${hosts[@]} ; do
+    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                  -i $PEM_PATH/$PEM_FILE.pem \
+                                  $LOCAL_HOME/install.sh \
+                                  $USER@$host:$REMOTE_HOME \
+                                  && echo "done" > $LOCAL_HOME/$PROJECT/$DATETIME-$host-scpinstall.out)
+done
+
+# check to see if the scp call is complete (could just use the wait command here...)
+res=0
+while [ "$res" != "$INSTANCE_COUNT" ] ;
+do
+    echo -n .
+    res=$(grep -c "done" $LOCAL_HOME/$PROJECT/$DATETIME*scpinstall.out \
+        | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+    sleep 3
+done
+echo "complete"
+echo
+
+# Install test software
+echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
+for host in ${hosts[@]} ; do
+    (ssh -nq -o StrictHostKeyChecking=no \
+        -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
+        "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall"\
+        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-install.out) &
+done
+
+# check to see if the install scripts are complete
+res=0
+while [ "$res" != "$INSTANCE_COUNT" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
+    echo -n .
+    res=$(grep -c "software installed" $LOCAL_HOME/$PROJECT/$DATETIME*install.out \
+        | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+    sleep 3
+done
+echo "complete"
+echo
 
 
 # Create a working jmx file and edit it to adjust thread counts and filepaths (leave the original jmx intact!)
