@@ -13,7 +13,6 @@ Further details and idiot-level step by step instructions:
 
 TO DO:
 -- Accept jmx filename as a parameter (not requiring that it be named the same as the directory)
--- Create a feature to allow a stop request to be sent to running tests (rather than just terminating the instances)
 
 Usage:
   ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED (if ec2 instances are required*)]
@@ -84,6 +83,9 @@ If you do not wish to use ec2 you can provide a comma-separated list of pre-defi
 
 ELASTIC_IPS=""
 If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
+
+JMETER_VERSION="apache-jmeter-2.6"
+Allows the version to be chosen dynamically. Only works on 2.5.1, 2.6 and greater.
 
 4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
     
