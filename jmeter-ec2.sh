@@ -148,22 +148,22 @@ function runsetup() {
         echo "   -------------------------------------------------------------------------------------"
         echo
         echo
+    
+	    # Check if remote hosts are up
+	    for host in ${hosts[@]} ; do
+	        if [ ! "$(ssh -q -q \
+	            -o StrictHostKeyChecking=no \
+	            -o "BatchMode=yes" \
+	            -o "ConnectTimeout 15" \
+	            -i $PEM_PATH/$PEM_FILE.pem \
+	            $USER@$host echo up 2>&1)" == "up" ] ; then
+	            echo "Host $host is not responding, script exiting..."
+	            echo
+	            exit
+	        fi
+	    done
     fi
-    
-    # Check if remote hosts are up
-    for host in ${hosts[@]} ; do
-        if [ ! "$(ssh -q -q \
-            -o StrictHostKeyChecking=no \
-            -o "BatchMode=yes" \
-            -o "ConnectTimeout 15" \
-            -i $PEM_PATH/$PEM_FILE.pem \
-            $USER@$host echo up 2>&1)" == "up" ] ; then
-            echo "Host $host is not responding, script exiting..."
-            echo
-            exit
-        fi
-    done
-    
+
     # scp install.sh
     echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
     for host in ${hosts[@]} ; do
