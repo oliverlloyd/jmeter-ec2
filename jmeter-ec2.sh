@@ -512,6 +512,9 @@ function runtest() {
 }
 
 function runcleanup() {
+	# Turn off the CTRL-C trap now that we are already in the runcleanup function
+	trap - INT 
+	
     if [ "$teststarted" -eq 1 ] ; then
         # display final results
         echo ">"
