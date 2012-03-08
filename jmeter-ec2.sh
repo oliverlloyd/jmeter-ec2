@@ -395,7 +395,8 @@ function runtest() {
     # to be certain, we read the value in here and adjust the wait to match (this prevents lots of duplicates being written to the screen)
     sleep_interval=$(awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
     runningtotal_seconds=$(echo "$RUNNINGTOTAL_INTERVAL * $sleep_interval" | bc)
-    echo "JMeter started at $(date)"
+	start_date=$(date)
+    echo "JMeter started at $start_date"
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
     echo "> [updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds]"
     echo ">"
@@ -521,16 +522,8 @@ function runcleanup() {
         echo
         echo
     fi
-    
-    
-    
-    # tidy up working files
-    # for debugging purposes you could comment out these lines
-    rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
-    rm $LOCAL_HOME/$PROJECT/working* 
-    
-    
-    
+
+      
     # download the results
     for i in ${!hosts[@]} ; do
         echo -n "downloading results from $host..."
@@ -544,14 +537,12 @@ function runcleanup() {
     echo
     
     
-    
     # terminate any running instances created
     if [ -z "$REMOTE_HOSTS" ]; then
         echo "terminating instance(s)..."
         ec2-terminate-instances ${instanceids[@]}
         echo
     fi
-    
     
     
     # process the files into one jtl results file
@@ -569,6 +560,71 @@ function runcleanup() {
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
     mkdir -p $LOCAL_HOME/$PROJECT/results/
     mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
+
+
+	#***************************************************************************
+	# IMPORT RESULTS TO MYSQL DATABASE - IF SPECIFIED IN PROPERTIES
+	# scp import-results.sh
+	if [ ! -z "$DB_HOST" ] ; then
+	    echo -n "copying import-results.sh to database..."
+	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
+	                                  $LOCAL_HOME/import-results.sh \
+	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
+		wait
+		echo -n "done...."
+	
+	    # scp results to remote db
+	    echo -n "uploading jtl file to database.."
+	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
+	                                  $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-complete.jtl \
+	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
+	    wait
+	    echo -n "done...."
+
+		# set permissions
+	    (ssh -n -o StrictHostKeyChecking=no \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+			"chmod 755 $REMOTE_HOME/import-results.sh")
+
+	    # Import jtl to database...
+	    echo -n "importing jtl file..."
+	    (ssh -n -o StrictHostKeyChecking=no \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+	        "$REMOTE_HOME/import-results.sh \
+						'$DB_HOST' \
+						'$DB_NAME' \
+						'$DB_USER' \
+						'$DB_PSWD' \
+						'$REMOTE_HOME/import.csv' \
+						'$start_date' \
+						'myversion' \
+						'$PROJECT' \
+						'myenvironemt' \
+						'a comment'" \
+	        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-import.out) &
+    
+	    # check to see if the install scripts are complete
+	    res=0
+	    while [ "$res" != "$INSTANCE_COUNT" ] ; do # Import not complete 
+	        echo -n .
+	        res=$(grep -c "new testid" $LOCAL_HOME/$PROJECT/$DATETIME*import.out \
+	            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+	        sleep 3
+	    done
+	    echo "done"
+    	echo
+	fi
+	#***************************************************************************
+    
+    
+    # tidy up working files
+    # for debugging purposes you could comment out these lines
+    rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
+    rm $LOCAL_HOME/$PROJECT/working*
+
+
     echo "complete"
     echo
     echo
