@@ -640,6 +640,9 @@ function runcleanup() {
 }
 
 function control_c(){
+	# Turn off the CTRL-C trap now that it has been invoked once already
+	trap - INT
+	
     # Stop the running test on each host
     echo
     echo -n "> Stopping test..."
