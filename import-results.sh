@@ -59,7 +59,7 @@ sqlcreate="CREATE TABLE IF NOT EXISTS results ( \
   latency varchar(45) DEFAULT NULL, \
   hostname varchar(45) DEFAULT NULL, \
   PRIMARY KEY (id) \
-) ENGINE=MyISAM AUTO_INCREMENT=7271 DEFAULT CHARSET=latin1;"
+) ENGINE=MyISAM AUTO_INCREMENT=0 DEFAULT CHARSET=latin1;"
 
 dosql "$sqlcreate"
 
@@ -72,7 +72,6 @@ sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
   buildlife varchar(45) DEFAULT NULL, \
   project varchar(45) DEFAULT NULL, \
   environment varchar(45) DEFAULT NULL, \
-  value4 varchar(45) DEFAULT NULL, \
   comment varchar(45) DEFAULT NULL, \
   startdate varchar(45) DEFAULT NULL, \
   value7 varchar(45) DEFAULT NULL, \
@@ -86,9 +85,9 @@ dosql "$sqlcreate"
 
 
 # Insert a new row in tests table,
-search_value=$BUILDLIFE-$PROJECT-$ENVIRONMENT-$STARTDATE-$COMMENT
+#search_value=$BUILDLIFE-$PROJECT-$ENVIRONMENT-$STARTDATE-$COMMENT
 
-sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, value4, comment, startdate) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$search_value', '$COMMENT', '$STARTDATE');"
+sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, comment, startdate) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$COMMENT', '$STARTDATE');"
 
 dosql "$sqlInsertTestid"
 
@@ -117,3 +116,5 @@ echo "new testid = "$newTestid
 sqlUpdateTestid="UPDATE $mysql_db.results SET testid = $newTestid WHERE testid IS NULL AND id > 0"
 
 dosql "$sqlUpdateTestid"
+
+echo 'import complete';
