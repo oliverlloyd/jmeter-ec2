@@ -529,7 +529,7 @@ function runcleanup() {
       
     # download the results
     for i in ${!hosts[@]} ; do
-        echo -n "downloading results from $host..."
+        echo -n "downloading results from ${hosts[$i]}..."
         scp -q -o UserKnownHostsFile=/dev/null \
                                      -o StrictHostKeyChecking=no \
                                      -i $PEM_PATH/$PEM_FILE.pem \
