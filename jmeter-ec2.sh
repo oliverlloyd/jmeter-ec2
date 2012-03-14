@@ -553,9 +553,13 @@ function runcleanup() {
     for (( i=0; i<$INSTANCE_COUNT; i++ )) ; do
         cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
         rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
-    done
+    done	
+    sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
 
-    sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
+    # Split the thread label into two columns
+    #sed 's/ \([0-9][0-9]*-[0-9][0-9]*,\)/,\1/' \
+    #                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl >> \
+    #                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
     mkdir -p $LOCAL_HOME/$PROJECT/results/
