@@ -3,6 +3,9 @@
 PROJECT=$1
 INSTANCE_COUNT=$2
 DATETIME=$(date "+%s")
+ENVIRONMENT=$3
+RELEASE=$4
+COMMENT=$5
 
 . jmeter-ec2.properties
 
@@ -603,10 +606,10 @@ function runcleanup() {
 						'$DB_PSWD' \
 						'$REMOTE_HOME/import.csv' \
 						'$start_date' \
-						'myversion' \
+						'$RELEASE' \
 						'$PROJECT' \
-						'myenvironemt' \
-						'a comment'" \
+						'$ENVIRONMENT' \
+						'$COMMENT'" \
 	        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-import.out) &
     
 	    # check to see if the install scripts are complete
