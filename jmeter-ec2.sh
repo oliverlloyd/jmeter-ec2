@@ -650,7 +650,7 @@ function control_c(){
     for f in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
         -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$f]} \
-        $REMOTE_HOME/$JMETER_VERSION/bin/shutdown.sh ) &
+        $REMOTE_HOME/$JMETER_VERSION/bin/stoptest.sh ) &
     done
     wait
     echo ">"
