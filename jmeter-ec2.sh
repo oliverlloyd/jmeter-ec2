@@ -116,6 +116,12 @@ function runsetup() {
             if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
                 countof_instanceids=0
                 echo "no instances successfully initialised, exiting"
+				echo
+			    # attempt to terminate any running instances - just to be sure
+		        echo "terminating instance(s)..."
+				# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
+		        ec2-terminate-instances ${attempted_instanceids[@]}
+		        echo
                 exit
             else
                 countof_instanceids=${#healthy_instanceids[@]}
