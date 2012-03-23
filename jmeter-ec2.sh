@@ -51,7 +51,7 @@ function runsetup() {
         
         # create the instance(s) and capture the instance id(s)
         echo -n "requesting $INSTANCE_COUNT instance(s)..."
-        instanceids=(`ec2-run-instances \
+        attempted_instanceids=(`ec2-run-instances \
                     --key $PEM_FILE \
                     -t $INSTANCE_TYPE \
                     -g $INSTANCE_SECURITYGROUP \
@@ -62,7 +62,7 @@ function runsetup() {
         
         # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
         # less than the expected number is given wthout failing the test.
-        countof_instanceids=${#instanceids[@]}
+        countof_instanceids=${#attempted_instanceids[@]}
         if [ "$countof_instanceids" = 0 ] ; then
             echo
             echo "Amazon did not supply any instances, exiting"
@@ -87,23 +87,32 @@ function runsetup() {
         do
             echo -n .
             status_check_count=$(( $status_check_count + 1))
-            count_passed=$(ec2-describe-instance-status ${instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+            count_passed=$(ec2-describe-instance-status ${attempted_instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
             sleep 1
         done
         
         if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==INSTANCE_COUNT
             # get hostname and build the list used later in the script
-            hosts=(`ec2-describe-instances ${instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
+
+			# set the instanceids array to use from now on - attempted = actual
+			for key in "${!attempted_instanceids[@]}"
+			do
+			  instanceids["$key"]="${attempted_instanceids["$key"]}"
+			done
+			
+			# set hosts array
+            hosts=(`ec2-describe-instances ${attempted_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
             echo "all hosts ready"
         else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
             original_count=$countof_instanceids
-            # weirdly, at this stage instanceids develops some newline chars at the end. So we strip them
-            #instanceids_clean=`echo $instanceids | tr '\n' ' '`
             # filter requested instances for only those that started well
-            healthy_instanceids=(`ec2-describe-instance-status ${instanceids[@]} \
+            healthy_instanceids=(`ec2-describe-instance-status ${attempted_instanceids[@]} \
                                 --filter instance-status.reachability=passed \
                                 --filter system-status.reachability=passed \
                                 | awk '/INSTANCE\t/ {print $2}'`)
+
+            hosts=(`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`)
+
             if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
                 countof_instanceids=0
                 echo "no instances successfully initialised, exiting"
@@ -116,24 +125,37 @@ function runsetup() {
                 echo "$countof_failedinstances instances(s) failed to start, only $countof_instanceids machine(s) will be used in the test"
                 INSTANCE_COUNT=$countof_instanceids
             fi
-            hosts=(`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`)
-            instanceids=$healthy_instanceids
+			
+			# set the array of instance ids based on only those that succeeded
+			for key in "${!healthy_instanceids[@]}"  # make sure you include the quotes there
+			do
+			  instanceids["$key"]="${healthy_instanceids["$key"]}"
+			done
         fi
-        echo
-        
+        echo "done"
+		echo
+
         # if provided, assign elastic IPs to each instance
         if [ ! -z "$ELASTIC_IPS" ] ; then # Not Null - same as -n
             echo "assigning elastic ips..."
             for x in "${!instanceids[@]}" ; do
-                ec2-associate-address ${elasticips[x]} -i ${instanceids[x]}
+                (ec2-associate-address ${elasticips[x]} -i ${instanceids[x]})
                 hosts[x]=${elasticips[x]}
-                # check for ssh connectivity on the new address
-                while ssh -o StrictHostKeyChecking=no -q -i $PEM_PATH/$PEM_FILE.pem \
-                    $USER@${hosts[x]} true && test; \
-                    do echo -n .; sleep 1; done
-                # Note. If any IP is already in use on an instance that is still running then the ssh check above will return
-                # a false positive. If this scenario is common you should put a sleep statement here.
             done
+			wait
+            echo "complete"
+
+            echo
+            echo -n "checking elastic ips..."
+            for x in "${!instanceids[@]}" ; do
+				# check for ssh connectivity on the new address
+	            while ssh -o StrictHostKeyChecking=no -q -i $PEM_PATH/$PEM_FILE.pem \
+	                $USER@${hosts[x]} true && test; \
+	                do echo -n .; sleep 1; done
+	            # Note. If any IP is already in use on an instance that is still running then the ssh check above will return
+	            # a false positive. If this scenario is common you should put a sleep statement here.
+            done
+			wait
             echo "complete"
             echo
         fi
@@ -546,7 +568,8 @@ function runcleanup() {
     # terminate any running instances created
     if [ -z "$REMOTE_HOSTS" ]; then
         echo "terminating instance(s)..."
-        ec2-terminate-instances ${instanceids[@]}
+		# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
+        ec2-terminate-instances ${attempted_instanceids[@]}
         echo
     fi
     
@@ -570,6 +593,7 @@ function runcleanup() {
     #                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
     mkdir -p $LOCAL_HOME/$PROJECT/results/
     mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
 
@@ -602,7 +626,7 @@ function runcleanup() {
 
 	    # Import jtl to database...
 	    echo -n "importing jtl file..."
-	    (ssh -n -o StrictHostKeyChecking=no \
+	    (ssh -nq -o StrictHostKeyChecking=no \
 	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
 	        "$REMOTE_HOME/import-results.sh \
 						'$DB_HOST' \
@@ -615,13 +639,13 @@ function runcleanup() {
 						'$PROJECT' \
 						'$ENVIRONMENT' \
 						'$COMMENT'" \
-	        > $LOCAL_HOME/$PROJECT/$DATETIME-$host-import.out) &
+	        > $LOCAL_HOME/$PROJECT/$DATETIME-import.out) &
     
 	    # check to see if the install scripts are complete
 	    res=0
 	    while [ ! "$res" > 0  ] ; do # Import not complete 
 	        echo -n .
-	        res=$(grep -c "import complete" $LOCAL_HOME/$PROJECT/$DATETIME*import.out \
+	        res=$(grep -c "import complete" $LOCAL_HOME/$PROJECT/$DATETIME-import.out \
 	            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
 	        sleep 3
 	    done
