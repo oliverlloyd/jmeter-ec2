@@ -74,7 +74,7 @@ sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
   environment varchar(45) DEFAULT NULL, \
   comment varchar(45) DEFAULT NULL, \
   startdate varchar(45) DEFAULT NULL, \
-  value7 varchar(45) DEFAULT NULL, \
+  accepted varchar(45) DEFAULT NULL, \
   value8 varchar(45) DEFAULT NULL, \
   value9 varchar(45) DEFAULT NULL, \
   value10 varchar(45) DEFAULT NULL, \
@@ -87,7 +87,7 @@ dosql "$sqlcreate"
 # Insert a new row in tests table,
 #search_value=$BUILDLIFE-$PROJECT-$ENVIRONMENT-$STARTDATE-$COMMENT
 
-sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, comment, startdate) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$COMMENT', '$STARTDATE');"
+sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, comment, startdate, accepted) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$COMMENT', '$STARTDATE', 'N');"
 
 dosql "$sqlInsertTestid"
 
