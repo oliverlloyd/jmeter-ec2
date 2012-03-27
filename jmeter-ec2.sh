@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright 2012 - Oliver Lloyd - GNU GENERAL PUBLIC LICENSE
+
 PROJECT=$1
 INSTANCE_COUNT=$2
 DATETIME=$(date "+%s")
