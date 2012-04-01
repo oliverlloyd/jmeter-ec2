@@ -428,7 +428,9 @@ function runtest() {
     # to be certain, we read the value in here and adjust the wait to match (this prevents lots of duplicates being written to the screen)
     sleep_interval=$(awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
     runningtotal_seconds=$(echo "$RUNNINGTOTAL_INTERVAL * $sleep_interval" | bc)
-	start_date=$(date)
+	# $epoch is used when importing to mysql (if enabled) because we want unix timestamps, not datetime, as this works better when graphing.
+	epoch=$(date +%s)*1000
+	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
     echo "JMeter started at $start_date"
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
     echo "> [updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds]"
@@ -642,7 +644,7 @@ function runcleanup() {
 						'$DB_USER' \
 						'$DB_PSWD' \
 						'$REMOTE_HOME/import.csv' \
-						'$start_date' \
+						'$epoch' \
 						'$RELEASE' \
 						'$PROJECT' \
 						'$ENVIRONMENT' \
