@@ -1,6 +1,26 @@
 #!/bin/bash
 
+# ========================================================================================
+# jmeter-ec2.sh
+# https://github.com/oliverlloyd/jmeter-ec2
+# http://www.http503.com/2012/run-jmeter-on-amazon-ec2-cloud/
+# ========================================================================================
+#
 # Copyright 2012 - Oliver Lloyd - GNU GENERAL PUBLIC LICENSE
+#
+# JMeter-ec2 is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# JMeter-ec2 is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with JMeter-ec2.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 PROJECT=$1
 INSTANCE_COUNT=$2
@@ -9,6 +29,7 @@ ENVIRONMENT=$3
 RELEASE=$4
 COMMENT=$5
 
+# Execute the jmeter-ec2.properties file, establishing these constants.
 . jmeter-ec2.properties
 
 cd $EC2_HOME
@@ -707,3 +728,5 @@ trap control_c SIGINT
 runsetup
 runtest
 runcleanup
+
+
