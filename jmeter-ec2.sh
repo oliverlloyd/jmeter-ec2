@@ -450,7 +450,8 @@ function runtest() {
     sleep_interval=$(awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
     runningtotal_seconds=$(echo "$RUNNINGTOTAL_INTERVAL * $sleep_interval" | bc)
 	# $epoch is used when importing to mysql (if enabled) because we want unix timestamps, not datetime, as this works better when graphing.
-	epoch=$(date +%s)*1000
+	epoch_seconds=$(date +%s) 
+	epoch_milliseconds=$(echo "$epoch_seconds* 1000" | bc) # milliseconds since Mick Jagger became famous
 	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
     echo "JMeter started at $start_date"
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
@@ -657,6 +658,7 @@ function runcleanup() {
 
 	    # Import jtl to database...
 	    echo -n "importing jtl file..."
+
 	    (ssh -nq -o StrictHostKeyChecking=no \
 	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
 	        "$REMOTE_HOME/import-results.sh \
@@ -665,7 +667,7 @@ function runcleanup() {
 						'$DB_USER' \
 						'$DB_PSWD' \
 						'$REMOTE_HOME/import.csv' \
-						'$epoch' \
+						'$epoch_milliseconds' \
 						'$RELEASE' \
 						'$PROJECT' \
 						'$ENVIRONMENT' \
