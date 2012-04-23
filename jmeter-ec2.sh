@@ -278,7 +278,7 @@ function runsetup() {
             endresult="$REMOTE_HOME"/data/"$filename"
             if [[ $filepath =~ .*\$.* ]] ; then
                 echo "The path $filepath contains a $ char, this currently fails the awk sub command."
-                echo "Until I get around to fixing this, you'll have to remove these from all filepaths. Sorry."
+                echo "You'll have to remove these from all filepaths. Sorry."
                 echo
                 echo "Script exiting"
                 exit
@@ -322,7 +322,7 @@ function runsetup() {
         
         # get count of thread groups, show results to screen
         countofthreadgroups=${#threadgroup_threadcounts[@]}
-        echo "editing thread counts - $PROJECT.jmx has $countofthreadgroups threadgroup(s):"
+        echo "editing thread counts - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [Disabled & Enabled]..."
             
         # now we loop through each thread group, editing a separate file for each host each iteration (nested loop)
         for i in ${!threadgroup_threadcounts[@]} ; do
@@ -350,12 +350,13 @@ function runsetup() {
                     mv "$temp_jmx"_"$y" "$working_jmx"_"$y"
                 done
                 
-                # write update to screen
-                echo "...$i) ${threadgroup_names[$i]} has ${threadgroup_threadcounts[$i]} thread(s), to be distributed over $INSTANCE_COUNT instance(s)"
+                # write update to screen - removed 23/04/2012
+                # echo "...$i) ${threadgroup_names[$i]} has ${threadgroup_threadcounts[$i]} thread(s), to be distributed over $INSTANCE_COUNT instance(s)"
                 
                 unset threads
         done
-        echo
+        echo -n "done"
+		echo
     fi
     
     
