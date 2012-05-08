@@ -32,6 +32,11 @@ COMMENT=$5
 # Execute the jmeter-ec2.properties file, establishing these constants.
 . jmeter-ec2.properties
 
+# If exists then run a local version of the properties file to allow project customisations.
+if [ ! -d "$LOCAL_HOME/$PROJECT/jmeter-ec2.properties" ] ; then
+	. $LOCAL_HOME/$PROJECT/jmeter-ec2.properties
+fi
+
 cd $EC2_HOME
 
 # check project directry exists
