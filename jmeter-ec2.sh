@@ -33,7 +33,7 @@ COMMENT=$5
 . jmeter-ec2.properties
 
 # If exists then run a local version of the properties file to allow project customisations.
-if [ ! -d "$LOCAL_HOME/$PROJECT/jmeter-ec2.properties" ] ; then
+if [ -f "$LOCAL_HOME/$PROJECT/jmeter-ec2.properties" ] ; then
 	. $LOCAL_HOME/$PROJECT/jmeter-ec2.properties
 fi
 
@@ -166,7 +166,6 @@ function runsetup() {
 			  instanceids["$key"]="${healthy_instanceids["$key"]}"
 			done
         fi
-        echo "done"
 		echo
 
         # if provided, assign elastic IPs to each instance
@@ -327,7 +326,7 @@ function runsetup() {
         
         # get count of thread groups, show results to screen
         countofthreadgroups=${#threadgroup_threadcounts[@]}
-        echo "editing thread counts - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [Disabled & Enabled]..."
+        echo -n "editing thread counts - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [Disabled & Enabled]..."
             
         # now we loop through each thread group, editing a separate file for each host each iteration (nested loop)
         for i in ${!threadgroup_threadcounts[@]} ; do
@@ -501,7 +500,7 @@ function runtest() {
                     
                     count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
                     avg_overallhosts=$(echo "$avg_overallhosts+$avg" | bc)
-                    tps_overallhosts=$(echo "$tps_overallhosts+$tps" | bc) 
+                    tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) 
                     errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
                 fi
             fi
@@ -532,7 +531,7 @@ function runtest() {
                         echo "> $(date +%T): $screenupdate | host: $host" # write results to screen
                     done
                     echo ">"
-                    echo "> $(date +%T): [RUNNING TOTALS] current count: $count_overallhosts, current avg: $avg_overallhosts (ms), current tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+                    echo "> $(date +%T): [RUNNING TOTALS] total count: $count_overallhosts, current avg: $avg_overallhosts (ms), average tps: $tps_overallhosts (p/sec), total errors: $errors_overallhosts"
                     echo ">"
                 fi
             fi
