@@ -363,7 +363,7 @@ function runsetup() {
 		echo
     fi
     
-    
+    echo
     # scp the test files onto each host
     echo -n "copying test files to $INSTANCE_COUNT server(s)..."
     
@@ -614,23 +614,28 @@ function runcleanup() {
     # process the files into one jtl results file
     echo -n "processing results..."
     for (( i=0; i<$INSTANCE_COUNT; i++ )) ; do
-        cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+        cat $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-grouped.jtl
         rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-$i.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
     done	
 	
 	# Srt File
-    sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
+    sort $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-grouped.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
 	
 	# Remove blank lines
-	sed '/^$/d' $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
+	sed '/^$/d' $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-noblanks.jtl
 
     # Split the thread label into two columns
     #sed 's/ \([0-9][0-9]*-[0-9][0-9]*,\)/,\1/' \
     #                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl >> \
     #                  $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 
-    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-temp.jtl
+	# Remove any lines containing "0,0,Error:" - which seems to be an intermittant bug in JM where the getTimestamp call fails with a nullpointer
+	sed '/^0,0,Error:/d' $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-noblanks.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
+	
+	# Tidy up
+    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-grouped.jtl
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
+    rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-noblanks.jtl
     mkdir -p $LOCAL_HOME/$PROJECT/results/
     mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
 
