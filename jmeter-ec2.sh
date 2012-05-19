@@ -686,10 +686,12 @@ function runcleanup() {
     
 	    # check to see if the install scripts are complete
 	    res=0
+		counter=0
 	    while [ "$res" = 0 ] ; do # Import not complete 
 	        echo -n .
-	        sleep 3
 	        res=$(grep -c "import complete" $LOCAL_HOME/$PROJECT/$DATETIME-import.out)
+			counter=$((counter+1))
+	        sleep counter # With large files this step can take considerable time so we gradually increase wait times to prevent excess screen dottage
 	    done
 	    echo "done"
     	echo
