@@ -705,8 +705,6 @@ function runcleanup() {
     rm $LOCAL_HOME/$PROJECT/working*
 
 
-    echo "complete"
-    echo
     echo
     echo "   -------------------------------------------------------------------------------------"
     echo "                  jmeter-ec2 Automation Script - COMPLETE"
