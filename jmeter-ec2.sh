@@ -686,11 +686,10 @@ function runcleanup() {
     
 	    # check to see if the install scripts are complete
 	    res=0
-	    while [ ! "$res" > 0  ] ; do # Import not complete 
+	    while [ "$res" = 0 ] ; do # Import not complete 
 	        echo -n .
-	        res=$(grep -c "import complete" $LOCAL_HOME/$PROJECT/$DATETIME-import.out \
-	            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
 	        sleep 3
+	        res=$(grep -c "import complete" $LOCAL_HOME/$PROJECT/$DATETIME-import.out)
 	    done
 	    echo "done"
     	echo
