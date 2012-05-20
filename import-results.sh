@@ -13,8 +13,9 @@ STARTDATE=$6
 BUILDLIFE=$7
 PROJECT=$8
 ENVIRONMENT=$9
-shift 1
-COMMENT=$9
+shift 2
+COMMENT=$8
+DURATION=$9
 
 echo "DB_HOST: $DB_HOST"
 echo "DB_NAME: $DB_NAME"
@@ -26,6 +27,7 @@ echo "BUILDLIFE: $BUILDLIFE"
 echo "PROJECT: $PROJECT"
 echo "ENVIRONMENT: $ENVIRONMENT"
 echo "COMMENT: $COMMENT"
+echo "DURATION: $DURATION"
 
 
 sqlstr="mysql -u $DB_USER -h $DB_HOST -p$DB_PSWD $DB_NAME"
@@ -72,6 +74,7 @@ sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
   buildlife varchar(45) DEFAULT NULL, \
   project varchar(45) DEFAULT NULL, \
   environment varchar(45) DEFAULT NULL, \
+  duration varchar(45) DEFAULT NULL, \
   comment varchar(45) DEFAULT NULL, \
   startdate varchar(45) DEFAULT NULL, \
   accepted varchar(45) DEFAULT NULL, \
@@ -87,7 +90,7 @@ dosql "$sqlcreate"
 # Insert a new row in tests table,
 #search_value=$BUILDLIFE-$PROJECT-$ENVIRONMENT-$STARTDATE-$COMMENT
 
-sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, comment, startdate, accepted) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$COMMENT', '$STARTDATE', 'N');"
+sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, duration, comment, startdate, accepted) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$DURATION', '$COMMENT', '$STARTDATE', 'N');"
 
 dosql "$sqlInsertTestid"
 

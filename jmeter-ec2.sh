@@ -632,14 +632,21 @@ function runcleanup() {
 	# Remove any lines containing "0,0,Error:" - which seems to be an intermittant bug in JM where the getTimestamp call fails with a nullpointer
 	sed '/^0,0,Error:/d' $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-noblanks.jtl >> $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl
 	
+	# Calclulate test duration
+	start_time=$(head -1 $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl | cut -d',' -f1)
+	end_time=$(tail -1 $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl | cut -d',' -f1)
+	duration=$(echo "$end_time-$start_time" | bc)
+	if [ ! $duration > 0 ] ; then
+		duration=0;
+	fi
+	
 	# Tidy up
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-grouped.jtl
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-sorted.jtl
     rm $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-noblanks.jtl
     mkdir -p $LOCAL_HOME/$PROJECT/results/
     mv $LOCAL_HOME/$PROJECT/$PROJECT-$DATETIME-complete.jtl $LOCAL_HOME/$PROJECT/results/
-
-
+	
 	#***************************************************************************
 	# IMPORT RESULTS TO MYSQL DATABASE - IF SPECIFIED IN PROPERTIES
 	# scp import-results.sh
@@ -681,7 +688,8 @@ function runcleanup() {
 						'$RELEASE' \
 						'$PROJECT' \
 						'$ENVIRONMENT' \
-						'$COMMENT'" \
+						'$COMMENT' \
+						'$duration'" \
 	        > $LOCAL_HOME/$PROJECT/$DATETIME-import.out) &
     
 	    # check to see if the install scripts are complete
@@ -690,8 +698,8 @@ function runcleanup() {
 	    while [ "$res" = 0 ] ; do # Import not complete 
 	        echo -n .
 	        res=$(grep -c "import complete" $LOCAL_HOME/$PROJECT/$DATETIME-import.out)
-			counter=$((counter+1))
-	        sleep counter # With large files this step can take considerable time so we gradually increase wait times to prevent excess screen dottage
+			counter=$(($counter+1))
+	        sleep $counter # With large files this step can take considerable time so we gradually increase wait times to prevent excess screen dottage
 	    done
 	    echo "done"
     	echo
@@ -701,7 +709,7 @@ function runcleanup() {
     
     # tidy up working files
     # for debugging purposes you could comment out these lines
-    rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
+    #rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
     rm $LOCAL_HOME/$PROJECT/working*
 
 
