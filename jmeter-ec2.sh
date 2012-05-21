@@ -382,7 +382,7 @@ function runsetup() {
     if [ -r $LOCAL_HOME/$PROJECT/data ] ; then # don't try to upload this optional dir if it is not present
         echo -n "data dir.."
         for host in ${hosts[@]} ; do
-            (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
                                           -i $PEM_PATH/$PEM_FILE.pem \
                                           $LOCAL_HOME/$PROJECT/data \
                                           $USER@$host:$REMOTE_HOME/) &
