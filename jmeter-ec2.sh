@@ -370,7 +370,7 @@ function runsetup() {
     # scp jmx dir
     echo -n "jmx files.."
     for y in "${!hosts[@]}" ; do
-        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+        (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
                                       -i $PEM_PATH/$PEM_FILE.pem \
                                       $LOCAL_HOME/$PROJECT/working_$y \
                                       $USER@${hosts[$y]}:$REMOTE_HOME/execute.jmx) &
@@ -395,7 +395,7 @@ function runsetup() {
     if [ -r $LOCAL_HOME/jmeter.properties ] ; then # don't try to upload this optional file if it is not present
         echo -n "jmeter.properties.."
         for host in ${hosts[@]} ; do
-            (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                           -i $PEM_PATH/$PEM_FILE.pem \
                                           $LOCAL_HOME/jmeter.properties \
                                           $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
@@ -408,7 +408,7 @@ function runsetup() {
     if [ -r $LOCAL_HOME/jmeter ] ; then # don't try to upload this optional file if it is not present
         echo -n "jmeter execution file..."
         for host in ${hosts[@]} ; do
-            (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                           -i $PEM_PATH/$PEM_FILE.pem \
                                           $LOCAL_HOME/jmeter \
                                           $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
@@ -592,7 +592,7 @@ function runcleanup() {
     # download the results
     for i in ${!hosts[@]} ; do
         echo -n "downloading results from ${hosts[$i]}..."
-        scp -q -o UserKnownHostsFile=/dev/null \
+        scp -q -C -o UserKnownHostsFile=/dev/null \
                                      -o StrictHostKeyChecking=no \
                                      -i $PEM_PATH/$PEM_FILE.pem \
                                      $USER@${hosts[$i]}:$REMOTE_HOME/$PROJECT-$DATETIME-$i.jtl \
@@ -661,7 +661,7 @@ function runcleanup() {
 	
 	    # scp results to remote db
 	    echo -n "uploading jtl file to database.."
-	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+	    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
 	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
 	                                  $LOCAL_HOME/$PROJECT/results/$PROJECT-$DATETIME-complete.jtl \
 	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
@@ -709,7 +709,7 @@ function runcleanup() {
     
     # tidy up working files
     # for debugging purposes you could comment out these lines
-    #rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
+    rm $LOCAL_HOME/$PROJECT/$DATETIME*.out
     rm $LOCAL_HOME/$PROJECT/working*
 
 
