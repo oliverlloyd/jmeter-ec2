@@ -495,12 +495,15 @@ function runtest() {
                     count_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $5}')
                     avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $11}')
                     tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $9}')
+                    tps_recent_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $9}')
                     tps_total=${tps_total_raw%/s} # remove the trailing '/s'
+                    tps_recent=${tps_recent_raw%/s} # remove the trailing '/s'
                     errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
                     
                     count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
                     avg_overallhosts=$(echo "$avg_overallhosts+$avg" | bc)
                     tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) 
+                    tps_recent_overallhosts=$(echo "$tps_recent_overallhosts+$tps_recent" | bc)
                     errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
                 fi
             fi
@@ -531,7 +534,7 @@ function runtest() {
                         echo "> $(date +%T): $screenupdate | host: $host" # write results to screen
                     done
                     echo ">"
-                    echo "> $(date +%T): [RUNNING TOTALS] total count: $count_overallhosts, current avg: $avg_overallhosts (ms), average tps: $tps_overallhosts (p/sec), total errors: $errors_overallhosts"
+                    echo "> $(date +%T): [RUNNING TOTALS] total count: $count_overallhosts, current avg: $avg_overallhosts (ms), average tps: $tps_overallhosts (p/sec), recent tps: $tps_recent_overallhosts (p/sec), total errors: $errors_overallhosts"
                     echo ">"
                 fi
             fi
@@ -547,6 +550,7 @@ function runtest() {
         count_overallhosts=0
         avg_overallhosts=0
         tps_overallhosts=0
+        tps_recent_overallhosts=0
         errors_overallhosts=0
         
         # check to see if the test is complete
@@ -560,12 +564,15 @@ function runtest() {
         avg_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $11}')
         tps_total_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $9}')
         tps_total=${tps_total_raw%/s} # remove the trailing '/s'
+        tps_recent_raw=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results +" | tail -1 | awk '{print $9}')
+        tps_recent=${tps_recent_raw%/s} # remove the trailing '/s'
         errors_total=$(tail -10 $LOCAL_HOME/$PROJECT/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
         
         # running totals
         count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
         avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
         tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
+		tps_recent_overallhosts=$(echo "$tps_recent_overallhosts+$tps_recent" | bc)
         errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
     done
     
@@ -581,7 +588,7 @@ function runcleanup() {
         # display final results
         echo ">"
         echo ">"
-        echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), errors: $errors_overallhosts"
+        echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), recent tps: $tps_recent_overallhosts (p/sec), errors: $errors_overallhosts"
         echo ">"
         echo "===================================================================== END OF JMETER-EC2 TEST =================================================================================="
         echo
