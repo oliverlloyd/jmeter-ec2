@@ -54,7 +54,7 @@ The script needs to know a location remotely where it can read and write data fr
 REMOTE_HOME="/tmp" # This value can be left as the default unless you have a specific requirement to change it
 This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
 
-AMI_ID="[A linix based AMI, eg. ami-c787bbb3]"
+AMI_ID="[A linix based AMI, eg. ami-e1e8d395]"
 (only in ec2 mode) Recommended AMIs provided. Both Java and JMeter are installed by the script and are not required.
 
 INSTANCE_TYPE="t1.micro"
@@ -72,7 +72,7 @@ PEM_PATH="/Users/oliver/.ec2"
 INSTANCE_AVAILABILITYZONE="eu-west-1b"
 (only in ec2 mode) Should be a valid value for where you want the instances to launch.
 
-USER="ec2-user"
+USER="ubuntu"
 (only in ec2 mode) Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
 
 RUNNINGTOTAL_INTERVAL="3"
