@@ -23,16 +23,21 @@ cd $REMOTE_HOME
 
 if [ $INSTALL_JAVA -eq 1 ] ; then
     # install java
-    bits=`getconf LONG_BIT`
-    if [ $bits -eq 32 ] ; then
-        wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin
-        chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin
-        $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin
-    else # 64 bit
-        wget -q -O $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin
-        chmod 755 $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
-        $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
-    fi
+	
+	#ubuntu
+	sudo DEBIAN_FRONTEND=noninteractive apt-get -qqy install default-jre
+	wait
+
+#    bits=`getconf LONG_BIT`
+#    if [ $bits -eq 32 ] ; then
+#        wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin
+#        chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin
+#        $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin
+#    else # 64 bit
+#        wget -q -O $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin
+#        chmod 755 $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
+#        $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
+#    fi
 fi
 
 # install jmeter
