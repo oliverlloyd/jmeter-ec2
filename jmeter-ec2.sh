@@ -169,7 +169,7 @@ function runsetup() {
 		echo
 		
 		# assign a name tag to each instance
-		echo -n "assigning tags..."
+		echo "assigning tags..."
 		ec2-create-tags ${attempted_instanceids[@]} --tag ProjectName=$PROJECT
 		echo
 
