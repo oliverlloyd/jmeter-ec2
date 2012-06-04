@@ -139,7 +139,7 @@ function runsetup() {
                                 --filter system-status.reachability=passed \
                                 | awk '/INSTANCE\t/ {print $2}'`)
 
-            hosts=(`ec2-describe-instances $healthy_instanceids | awk '/INSTANCE/ {print $4}'`)
+            hosts=(`ec2-describe-instances ${healthy_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
 
             if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
                 countof_instanceids=0
@@ -166,6 +166,11 @@ function runsetup() {
 			  instanceids["$key"]="${healthy_instanceids["$key"]}"
 			done
         fi
+		echo
+		
+		# assign a name tag to each instance
+		echo -n "assigning tags..."
+		ec2-create-tags ${attempted_instanceids[@]} --tag ProjectName=$PROJECT
 		echo
 
         # if provided, assign elastic IPs to each instance
