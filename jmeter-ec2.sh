@@ -171,7 +171,7 @@ function runsetup() {
 		# assign a name tag to each instance
 		echo "assigning tags..."
 		ec2-create-tags ${attempted_instanceids[@]} --tag ProjectName=$PROJECT
-		ec2-create-tags ${attempted_instanceids[@]} --tag Name=$PROJECT
+		ec2-create-tags ${attempted_instanceids[@]} --tag Name="jmeter-ec2-$PROJECT"
 		echo
 
         # if provided, assign elastic IPs to each instance
