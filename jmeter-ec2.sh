@@ -29,6 +29,19 @@ ENVIRONMENT=$3
 RELEASE=$4
 COMMENT=$5
 
+# First make sure we have the required params and if not print out an instructive message
+if [ -z $PROJECT ] ; then
+	echo "jmeter-ec2: Required parameter PROJECT mssing"
+	echo
+	echo "usage: jmeter-ec2.sh [PROJECT] [INSTANCE COUNT] [ENVIRONMENT] [RELEASE] [COMMENT]"
+	echo
+	echo "[INSTANCE COUNT]  -	optional, default=1 "
+	echo "[ENVIRONMENT]     -	optional"
+	echo "[COMMENT]         -	optional"
+	echo
+	exit
+fi
+
 # Execute the jmeter-ec2.properties file, establishing these constants.
 . jmeter-ec2.properties
 
