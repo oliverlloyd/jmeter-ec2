@@ -35,8 +35,10 @@ if [ -z $PROJECT ] ; then
 	echo
 	echo "usage: jmeter-ec2.sh [PROJECT] [INSTANCE COUNT] [ENVIRONMENT] [RELEASE] [COMMENT]"
 	echo
+	echo "[PROJECT]         -	required, directory and jmx name"
 	echo "[INSTANCE COUNT]  -	optional, default=1 "
 	echo "[ENVIRONMENT]     -	optional"
+	echo "[RELEASE]         -	optional"
 	echo "[COMMENT]         -	optional"
 	echo
 	exit
