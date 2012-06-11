@@ -707,7 +707,7 @@ function runcleanup() {
 	    (ssh -nq -o StrictHostKeyChecking=no \
 	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
 	        "$REMOTE_HOME/import-results.sh \
-						'$DB_HOST' \
+						'localhost' \
 						'$DB_NAME' \
 						'$DB_USER' \
 						'$DB_PSWD' \
