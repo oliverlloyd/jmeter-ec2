@@ -45,7 +45,7 @@ case "$JMETER_VERSION" in
 
 jakarta-jmeter-2.5.1)
     # JMeter version 2.5.1
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.mirrorservice.org/sites/ftp.apache.org//jmeter/binaries/$JMETER_VERSION.tgz
+    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
     # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
     install_jmeter_plugins
@@ -55,7 +55,7 @@ jakarta-jmeter-2.5.1)
 
 apache-jmeter-*)
     # JMeter version 2.x
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://apache.mirror1.spango.com//jmeter/binaries/$JMETER_VERSION.tgz
+    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
     # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
     install_jmeter_plugins
