@@ -189,7 +189,8 @@ function runsetup() {
 		(ec2-create-tags ${attempted_instanceids[@]} --tag Name="jmeter-ec2-$PROJECT")
 		wait
         echo "complete"
-
+		echo
+		
         # if provided, assign elastic IPs to each instance
         if [ ! -z "$ELASTIC_IPS" ] ; then # Not Null - same as -n
             echo "assigning elastic ips..."
@@ -243,7 +244,7 @@ function runsetup() {
 	        fi
 	    done
     fi
-
+	
     # scp install.sh
     echo -n "copying install.sh to $INSTANCE_COUNT server(s)..."
     for host in ${hosts[@]} ; do
@@ -267,7 +268,7 @@ function runsetup() {
     echo
     
     # Install test software
-    echo -n "running install.sh on $INSTANCE_COUNT server(s)..."
+    echo "running install.sh on $INSTANCE_COUNT server(s)..."
     for host in ${hosts[@]} ; do
         (ssh -nq -o StrictHostKeyChecking=no \
             -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
@@ -436,11 +437,37 @@ function runsetup() {
                                           $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
         done
         wait
-        echo "all files uploaded"
+        echo -n "done...."
     fi
-    echo
     
-    
+	# scp any custom jar files
+    if [ -d $LOCAL_HOME/custom_plugins ] && [ -n $(ls $LOCAL_HOME/custom_plugins/) ] ; then # don't try to upload any files if none present
+        echo -n "custom jar file(s)..."
+        for host in ${hosts[@]} ; do
+            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                          -i $PEM_PATH/$PEM_FILE.pem \
+                                          $LOCAL_HOME/custom_plugins/*.jar \
+                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
+        done
+        wait
+        echo -n "done...."
+    fi
+	
+    # scp any custom jar files
+    if [ -d $LOCAL_HOME/$PROJECT/custom_plugins ] && [ -n $(ls $LOCAL_HOME/$PROJECT/custom_plugins/) ] ; then # don't try to upload any files if none present
+        echo -n "project specific jar file(s)..."
+        for host in ${hosts[@]} ; do
+            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                          -i $PEM_PATH/$PEM_FILE.pem \
+                                          $LOCAL_HOME/$PROJECT/custom_plugins/*.jar \
+                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
+        done
+        wait
+        echo -n "done...."
+    fi
+
+	echo "all files uploaded"
+    echo   
     
     # run jmeter test plan
     echo "starting jmeter on:"
@@ -757,7 +784,7 @@ function control_c(){
 	
     # Stop the running test on each host
     echo
-    echo -n "> Stopping test..."
+    echo "> Stopping test..."
     for f in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
         -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$f]} \
