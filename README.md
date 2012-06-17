@@ -90,12 +90,12 @@ In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file w
 	ELASTIC_IPS=""
 	If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
 
-	JMETER_VERSION="apache-jmeter-2.6"
+	`JMETER_VERSION="apache-jmeter-2.6"`
 	Allows the version to be chosen dynamically. Only works on 2.5.1, 2.6 and greater.
 
 	DATABASE SETTINGS - optional, this functionality is not currently documented.
 
-4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'.
+4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory `/testing/myproject` then you should name the jmx file `myproject.jmx` if you are using `LOCAL_HOME=/home/username/someproject` then the jmx file should be renamed to `someproject.jmx`
 
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
