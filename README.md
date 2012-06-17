@@ -13,13 +13,13 @@ Further details and idiot-level step by step instructions:
 
 
 ## Usage:
-    ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED* - optional, default is 1]
+    ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]
 
 **If the property REMOTE_HOSTS is set to one or more hostnames then the NUMBER OF INSTANCES value is ignored and the given REMOTE_HOSTS will be used in place of creating new hardware on Amazon.*
 
 IMPORTANT - There is a limit imposed by Amazon on how many instances can be run - the default is 20 instances as of Oct 2011. 
 
-Limitations:
+### Limitations:
 * You cannot have variables in the field Thread Count, this value must be numeric.
 * File paths cannot be dynamic, any variables in the filepath will be ignored.
 
@@ -31,19 +31,9 @@ Limitations:
 
 
 ## Execution Instructions (for UNIX based OSs)
-1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script. Under this directory extract the file example-project.zip to give:
+1. Create a project directory on your machine. For example: `/home/username/jmeter-ec2/`. This is the working dir for the script.
 
-/home/username/jmeter-ec2/
-
-/home/username/jmeter-ec2/myproject/
-
-/home/username/jmeter-ec2/myproject/jmx/
-
-/home/username/jmeter-ec2/myproject/data/
-
-/home/username/jmeter-ec2/myproject/plugins/ (Optional, files placed here will be copied to /bin/lib/ext/ for each jmeter instance)
-
-2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
+2. Download all files from [https://github.com/oliverlloyd/jmeter-ec2](https://github.com/oliverlloyd/jmeter-ec2) and place them in the root directory created above and then extract the file example-project.zip to give a template directory structure for your project.
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
 
