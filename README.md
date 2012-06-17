@@ -52,13 +52,10 @@ In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file w
 
 2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
 
-3. Setup the properties for the script, each value listed below must be set.
-
-*jmeter-ec2.Properties:*
+3. Edit the file jmeter-ec2.properties, each value listed below must be set:
 
     LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"
     The script needs to know a location remotely where it can read and write data from while it runs.
-
     
     REMOTE_HOME="/tmp" # This value can be left as the default unless you have a specific requirement to change it
     This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
