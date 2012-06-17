@@ -33,61 +33,57 @@ Limitations:
 ## Execution Instructions (for UNIX based OSs)
 1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script. Under this directory just created, either:
 
-a) Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
+*Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
 
     /home/username/jmeter-ec2/
     /home/username/jmeter-ec2/myproject/
     /home/username/jmeter-ec2/myproject/jmx/
     /home/username/jmeter-ec2/myproject/data/
                 
-or b) Extract the contents of the example-project.zip file.
+*Or, Extract the contents of the example-project.zip file.
 
-Optionally, you can also create the directory:
-
-    /home/username/jmeter-ec2/myproject/plugins/
-
-In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file will be copied to the /bin/lib/ext/ directory.
+*Optionally, you can also create the directory: `/home/username/jmeter-ec2/myproject/plugins/` In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file will be copied to the /bin/lib/ext/ directory.*
     
-*Note. '/home/username/jmeter-ec2' can be anything so long as it is accessible and specified in the properties file.*
+*Note. `/home/username/jmeter-ec2` can be anything so long as it is accessible and specified in the properties file.*
 
 2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
 
-    LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"
+    `LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"`
     The script needs to know a location remotely where it can read and write data from while it runs.
     
-    REMOTE_HOME="/tmp" # This value can be left as the default unless you have a specific requirement to change it
+    `REMOTE_HOME="/tmp"` # This value can be left as the default unless you have a specific requirement to change it
     This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
 
-	AMI_ID="[A linix based AMI, eg. ami-e1e8d395]"
+	`AMI_ID="[A linix based AMI, eg. ami-e1e8d395]"`
 	(only in ec2 mode) Recommended AMIs provided. Both Java and JMeter are installed by the script and are not required.
 
-	INSTANCE_TYPE="t1.micro"
+	`INSTANCE_TYPE="t1.micro"`
 	(only in ec2 mode) This depends on the type of AMI - it must be available for the AMI used.
 
-	INSTANCE_SECURITYGROUP="jmeter"
+	`INSTANCE_SECURITYGROUP="jmeter"`
 	(only in ec2 mode) The name of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
 
-	PEM_FILE="olloyd-eu"
+	`PEM_FILE="olloyd-eu"`
 	(only in ec2 mode) Your Amazon key file - obviously must be installed locally.
 
-	PEM_PATH="/Users/oliver/.ec2"
+	`PEM_PATH="/Users/oliver/.ec2"`
 	(only in ec2 mode) The DIRECTORY where the Amazon PEM file is located. No trailing '/'!
 
-	INSTANCE_AVAILABILITYZONE="eu-west-1b"
+	`INSTANCE_AVAILABILITYZONE="eu-west-1b"`
 	(only in ec2 mode) Should be a valid value for where you want the instances to launch.
 
-	USER="ubuntu"
+	`USER="ubuntu"`
 	(only in ec2 mode) Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
 
-	RUNNINGTOTAL_INTERVAL="3"
+	`RUNNINGTOTAL_INTERVAL="3"`
 	How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
 
-	REMOTE_HOSTS=""
+	`REMOTE_HOSTS=""`
 	If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
 
-	ELASTIC_IPS=""
+	`ELASTIC_IPS=""`
 	If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
 
 	`JMETER_VERSION="apache-jmeter-2.6"`
@@ -101,8 +97,7 @@ In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file w
 
 6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
 
-7. Type: 
-    ./jmeter-ec2.sh someproject 1
+7. Type: `./jmeter-ec2.sh someproject 1`
 
 Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
 
