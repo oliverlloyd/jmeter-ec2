@@ -13,7 +13,7 @@ Further details and idiot-level step by step instructions:
 
 
 ## Usage:
-  ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED* - optional, default is 1]
+    ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED* - optional, default is 1]
 
 **If the property REMOTE_HOSTS is set to one or more hostnames then the NUMBER OF INSTANCES value is ignored and the given REMOTE_HOSTS will be used in place of creating new hardware on Amazon.*
 
@@ -95,13 +95,13 @@ In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file w
 
 	DATABASE SETTINGS - optional, this functionality is not currently documented.
 
-4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'
+4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'.
     
-Note. This naming convention allows the script to work seamlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.
-   
+*Note. This naming convention allows the script to work seamlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.*
+
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
-6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject)
+6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
 
 7. Type: 
     ./jmeter-ec2.sh someproject 1
