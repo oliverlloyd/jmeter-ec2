@@ -34,9 +34,13 @@ Limitations:
 1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script. Under this directory extract the file example-project.zip to give:
 
 /home/username/jmeter-ec2/
+
 /home/username/jmeter-ec2/myproject/
+
 /home/username/jmeter-ec2/myproject/jmx/
+
 /home/username/jmeter-ec2/myproject/data/
+
 /home/username/jmeter-ec2/myproject/plugins/ (Optional, files placed here will be copied to /bin/lib/ext/ for each jmeter instance)
 
 2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
