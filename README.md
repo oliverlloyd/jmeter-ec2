@@ -37,7 +37,7 @@ Limitations:
     /home/username/jmeter-ec2/myproject/
     /home/username/jmeter-ec2/myproject/jmx/
     /home/username/jmeter-ec2/myproject/data/
-    /home/username/jmeter-ec2/myproject/plugins/ (Optional, files placed here will be copied to /bin/lib/ext/ for each jmeter instance)
+    /home/username/jmeter-ec2/myproject/plugins/
 
 2. Download all files from https://github.com/oliverlloyd/jmeter-ec2 and place them in the root directory (eg. /home/username/jmeter-ec2).
 
