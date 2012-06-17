@@ -441,12 +441,12 @@ function runsetup() {
     fi
     
 	# scp any custom jar files
-    if [ -d $LOCAL_HOME/custom_plugins ] && [ -n $(ls $LOCAL_HOME/custom_plugins/) ] ; then # don't try to upload any files if none present
+    if [ -d $LOCAL_HOME/plugins ] && [ -n $(ls $LOCAL_HOME/plugins/) ] ; then # don't try to upload any files if none present
         echo -n "custom jar file(s)..."
         for host in ${hosts[@]} ; do
             (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                           -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/custom_plugins/*.jar \
+                                          $LOCAL_HOME/plugins/*.jar \
                                           $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
         done
         wait
@@ -454,12 +454,12 @@ function runsetup() {
     fi
 	
     # scp any custom jar files
-    if [ -d $LOCAL_HOME/$PROJECT/custom_plugins ] && [ -n $(ls $LOCAL_HOME/$PROJECT/custom_plugins/) ] ; then # don't try to upload any files if none present
+    if [ -d $LOCAL_HOME/$PROJECT/plugins ] && [ -n $(ls $LOCAL_HOME/$PROJECT/plugins/) ] ; then # don't try to upload any files if none present
         echo -n "project specific jar file(s)..."
         for host in ${hosts[@]} ; do
             (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                                           -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/$PROJECT/custom_plugins/*.jar \
+                                          $LOCAL_HOME/$PROJECT/plugins/*.jar \
                                           $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
         done
         wait
