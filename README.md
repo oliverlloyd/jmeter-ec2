@@ -96,8 +96,6 @@ In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file w
 	DATABASE SETTINGS - optional, this functionality is not currently documented.
 
 4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory'/testing/myproject' then you should name the jmx file 'myproject.jmx', if you are using LOCAL_HOME=/home/username/someproject then the jmx file should be renamed to 'someproject.jmx'.
-    
-*Note. This naming convention allows the script to work seamlessly over multiple projects (so long as they are all located in the same root) but it would not be difficult to edit the jmeter-ec2.sh file to use a specific jmx filename.*
 
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
