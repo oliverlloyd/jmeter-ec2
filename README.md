@@ -31,18 +31,18 @@ Limitations:
 
 
 ## Execution Instructions (for UNIX based OSs)
-1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script. Under this directory just created, either:
+1. Create a project directory on your machine. For example: '/home/username/jmeter-ec2/'. This is the working dir for the script. Under this directory just created:
 
-*Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
+* Create a project directory, something like: '/home/username/jmeter-ec2/myproject' and then below that create two sub directories named 'jmx' and 'data'. Your directory structure should look something like:
 
     /home/username/jmeter-ec2/
     /home/username/jmeter-ec2/myproject/
     /home/username/jmeter-ec2/myproject/jmx/
     /home/username/jmeter-ec2/myproject/data/
                 
-*Or, Extract the contents of the example-project.zip file.
+*(You can also simply extract the contents of the example-project.zip file.)*
 
-*Optionally, you can also create the directory: `/home/username/jmeter-ec2/myproject/plugins/` In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file will be copied to the /bin/lib/ext/ directory.*
+* Optionally, you can also create the directory: `/home/username/jmeter-ec2/myproject/plugins/` In here you can place any custom plugin (eg. jmeter-plugins.jar) and this file will be copied to the /bin/lib/ext/ directory.*
     
 *Note. `/home/username/jmeter-ec2` can be anything so long as it is accessible and specified in the properties file.*
 
