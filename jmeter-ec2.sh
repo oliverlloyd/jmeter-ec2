@@ -82,16 +82,17 @@ function runsetup() {
                 exit
             fi
         fi
+
+        # default to 1 instance if a count is not specified
+        if [ -z "$INSTANCE_COUNT" ] ; then INSTANCE_COUNT=1; fi
+
         echo
         echo "   -------------------------------------------------------------------------------------"
         echo "       jmeter-ec2 Automation Script - Running $PROJECT.jmx over $INSTANCE_COUNT AWS Instance(s)"
         echo "   -------------------------------------------------------------------------------------"
         echo
         echo
-        
-        # default to 1 instance if a count is not specified
-        if [ -z "$INSTANCE_COUNT" ] ; then INSTANCE_COUNT=1; fi
-        
+              
         # create the instance(s) and capture the instance id(s)
         echo -n "requesting $INSTANCE_COUNT instance(s)..."
         attempted_instanceids=(`ec2-run-instances \
