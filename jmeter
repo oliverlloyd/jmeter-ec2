@@ -87,4 +87,7 @@ SERVER="-server"
 
 ARGS="$SERVER $DUMP $HEAP $NEW $SURVIVOR $TENURING $EVACUATION $RMIGC $PERM"
 
+# Added to counter ELB DNS caching - see: http://wiki.apache.org/jmeter/JMeterAndAmazon
+JVM_ARGS="-Dsun.net.inetaddr.ttl=0"
+
 java $ARGS $JVM_ARGS -jar `dirname $0`/ApacheJMeter.jar "$@"
