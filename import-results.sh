@@ -66,37 +66,6 @@ sqlcreate="CREATE TABLE IF NOT EXISTS results ( \
 dosql "$sqlcreate"
 
 
-
-# Create tests table if not there already, results and tests
-
-sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
-  testid int(11) NOT NULL AUTO_INCREMENT, \
-  buildlife varchar(45) DEFAULT NULL, \
-  project varchar(45) DEFAULT NULL, \
-  environment varchar(45) DEFAULT NULL, \
-  duration varchar(45) DEFAULT NULL, \
-  comment varchar(45) DEFAULT NULL, \
-  startdate varchar(45) DEFAULT NULL, \
-  accepted varchar(45) DEFAULT NULL, \
-  value8 varchar(45) DEFAULT NULL, \
-  value9 varchar(45) DEFAULT NULL, \
-  value10 varchar(45) DEFAULT NULL, \
-  PRIMARY KEY (testid) \
-) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;"
-
-dosql "$sqlcreate"
-
-
-# Insert a new row in tests table,
-#search_value=$BUILDLIFE-$PROJECT-$ENVIRONMENT-$STARTDATE-$COMMENT
-
-sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, duration, comment, startdate, accepted) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '$DURATION', '$COMMENT', '$STARTDATE', 'N');"
-
-dosql "$sqlInsertTestid"
-
-
-
-
 # Import Results File
 sqlImport="load data local infile '$RESULTS_FILE' \
 			into table $mysql_db.results fields terminated by ',' \

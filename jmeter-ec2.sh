@@ -454,7 +454,7 @@ function runsetup() {
         echo -n "done...."
     fi
 	
-    # scp any custom jar files
+    # scp any project specific custom jar files
     if [ -d $LOCAL_HOME/$PROJECT/plugins ] && [ -n $(ls $LOCAL_HOME/$PROJECT/plugins/) ] ; then # don't try to upload any files if none present
         echo -n "project specific jar file(s)..."
         for host in ${hosts[@]} ; do
@@ -466,6 +466,37 @@ function runsetup() {
         wait
         echo -n "done...."
     fi
+	
+	# upload the scripts used to manage the database (if a db is in use)
+	if [ ! -z "$DB_HOST" ] ; then
+		# upload import-results.sh
+	    echo -n "copying db scripts to database..."
+	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
+	                                  $LOCAL_HOME/import-results.sh \
+	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
+		wait
+		
+		# set permissions
+	    (ssh -n -o StrictHostKeyChecking=no \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+			"chmod 755 $REMOTE_HOME/import-results.sh")
+		wait
+		
+		# upload update-test-status.sh
+	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
+	                                  $LOCAL_HOME/update-test-status.sh \
+	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
+		wait
+		
+		# set permissions
+	    (ssh -n -o StrictHostKeyChecking=no \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+			"chmod 755 $REMOTE_HOME/update-test-status.sh")
+		wait
+		echo -n "done...."
+	fi
 
 	echo "all files uploaded"
     echo   
@@ -708,14 +739,7 @@ function runcleanup() {
 	# IMPORT RESULTS TO MYSQL DATABASE - IF SPECIFIED IN PROPERTIES
 	# scp import-results.sh
 	if [ ! -z "$DB_HOST" ] ; then
-	    echo -n "copying import-results.sh to database..."
-	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
-	                                  $LOCAL_HOME/import-results.sh \
-	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
-		wait
-		echo -n "done...."
-	
+		
 	    # scp results to remote db
 	    echo -n "uploading jtl file to database.."
 	    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
@@ -725,14 +749,8 @@ function runcleanup() {
 	    wait
 	    echo -n "done...."
 
-		# set permissions
-	    (ssh -n -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
-			"chmod 755 $REMOTE_HOME/import-results.sh")
-
 	    # Import jtl to database...
 	    echo -n "importing jtl file..."
-
 	    (ssh -nq -o StrictHostKeyChecking=no \
 	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
 	        "$REMOTE_HOME/import-results.sh \
@@ -779,6 +797,71 @@ function runcleanup() {
     echo
 }
 
+function updateTests() {
+	
+	sqlstr="mysql -u $DB_USER -h $DB_HOST -p$DB_PSWD $DB_NAME"
+	if [ $debug = "true" ]; then
+		echo "sqlstr = '"$sqlstr"'"
+	fi
+	function dosql {
+		sqlresult=$(ssh -nq -o StrictHostKeyChecking=no \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+			"$sqlstr -e '$1'")
+			
+		if [ $debug = "true" ]; then
+			echo "sqlstmt = '"$1"'"
+			echo "sqlresult = '"$sqlresult"'"
+		fi
+
+	}
+	
+	case $1 in
+		0)
+			echo "pending"
+			
+			sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
+			  testid int(11) NOT NULL AUTO_INCREMENT, \
+			  buildlife varchar(45) DEFAULT NULL, \
+			  project varchar(45) DEFAULT NULL, \
+			  environment varchar(45) DEFAULT NULL, \
+			  duration varchar(45) DEFAULT NULL, \
+			  comment varchar(45) DEFAULT NULL, \
+			  startdate varchar(45) DEFAULT NULL, \
+			  accepted varchar(45) DEFAULT NULL, \
+			  status int(11) DEFAULT NULL, \
+			  value9 varchar(45) DEFAULT NULL, \
+			  value10 varchar(45) DEFAULT NULL, \
+			  PRIMARY KEY (testid) \
+			) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;"
+
+			dosql "$sqlcreate"
+			
+			# Insert a new row in tests table,
+			sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, duration, comment, startdate, accepted, status) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '0', '$COMMENT', '$STARTDATE', 'N', '0');"
+
+			dosql "$sqlInsertTestid"
+			
+			# Get last testid
+			sqlGetMaxTestid="SELECT max(testid) from $mysql_db.tests"
+
+			dosql "$sqlGetMaxTestid"
+
+			newTestid=$(echo $sqlresult | cut -d ' ' -f2)
+
+			echo "new testid = "$newTestid
+		
+			;;
+		1)
+			echo "running" 
+			
+			;;
+		2)
+			echo "complete"
+			
+			;;
+	esac
+}
+
 function control_c(){
 	# Turn off the CTRL-C trap now that it has been invoked once already
 	trap - INT
@@ -797,6 +880,9 @@ function control_c(){
     runcleanup
     exit
 }
+echo "here"
+updateTests 0
+exit
 
 # trap keyboard interrupt (control-c)
 trap control_c SIGINT
