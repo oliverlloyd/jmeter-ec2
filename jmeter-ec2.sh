@@ -467,10 +467,9 @@ function runsetup() {
         echo -n "done...."
     fi
 	
-	# upload the scripts used to manage the database (if a db is in use)
 	if [ ! -z "$DB_HOST" ] ; then
 		# upload import-results.sh
-	    echo -n "copying db scripts to database..."
+	    echo -n "copying import-results.sh to database..."
 	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
 	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
 	                                  $LOCAL_HOME/import-results.sh \
@@ -482,24 +481,19 @@ function runsetup() {
 	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
 			"chmod 755 $REMOTE_HOME/import-results.sh")
 		wait
-		
-		# upload update-test-status.sh
-	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
-	                                  $LOCAL_HOME/update-test-status.sh \
-	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
-		wait
-		
-		# set permissions
-	    (ssh -n -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
-			"chmod 755 $REMOTE_HOME/update-test-status.sh")
-		wait
 		echo -n "done...."
 	fi
 
 	echo "all files uploaded"
     echo   
+	
+	if [ ! -z "$DB_HOST" ] ; then
+		# Add an entry to the tests table in the database
+		echo -n "creating new test in database..."
+		updateTest 0 x x $RELEASE $PROJECT $ENVIRONMENT $COMMENT 
+		echo "testid $newTestid created"
+		echo
+	fi
     
     # run jmeter test plan
     echo "starting jmeter on:"
@@ -539,6 +533,10 @@ function runtest() {
 	epoch_seconds=$(date +%s) 
 	epoch_milliseconds=$(echo "$epoch_seconds* 1000" | bc) # milliseconds since Mick Jagger became famous
 	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
+	if [ ! -z "$DB_HOST" ] ; then
+		# mark test as running in database
+		updateTest 1 $newTestid x $RELEASE $PROJECT $ENVIRONMENT $COMMENT $epoch_milliseconds
+	fi
     echo "JMeter started at $start_date"
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
     echo "> [updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds]"
@@ -726,6 +724,11 @@ function runcleanup() {
 	duration=$(echo "$end_time-$start_time" | bc)
 	if [ ! $duration > 0 ] ; then
 		duration=0;
+	fi	
+	
+	if [ ! -z "$DB_HOST" ] ; then
+		# mark test as complete in database
+		updateTest 2 $newTestid $duration
 	fi
 	
 	# Tidy up
@@ -797,27 +800,23 @@ function runcleanup() {
     echo
 }
 
-function updateTests() {
+function updateTest() {
 	
-	sqlstr="mysql -u $DB_USER -h $DB_HOST -p$DB_PSWD $DB_NAME"
-	if [ $debug = "true" ]; then
-		echo "sqlstr = '"$sqlstr"'"
-	fi
+	sqlstr="mysql -u $DB_USER -p$DB_PSWD $DB_NAME"
+	
 	function dosql {
+		#echo "sqlstmt = '"$1"'"
+		#echo "sqlstr = '"$sqlstr"'"
 		sqlresult=$(ssh -nq -o StrictHostKeyChecking=no \
 	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
 			"$sqlstr -e '$1'")
 			
-		if [ $debug = "true" ]; then
-			echo "sqlstmt = '"$1"'"
-			echo "sqlresult = '"$sqlresult"'"
-		fi
-
+		#echo "sqlresult = '"$sqlresult"'"
 	}
 	
 	case $1 in
-		0)
-			echo "pending"
+		
+		0)	#pending
 			
 			sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
 			  testid int(11) NOT NULL AUTO_INCREMENT, \
@@ -837,27 +836,32 @@ function updateTests() {
 			dosql "$sqlcreate"
 			
 			# Insert a new row in tests table,
-			sqlInsertTestid="INSERT INTO $mysql_db.tests (buildlife, project, environment, duration, comment, startdate, accepted, status) VALUES ('$BUILDLIFE', '$PROJECT', '$ENVIRONMENT', '0', '$COMMENT', '$STARTDATE', 'N', '0');"
-
+			sqlInsertTestid="INSERT INTO $DB_NAME.tests (buildlife, project, environment, duration, comment, startdate, accepted, status) VALUES (\"$4\", \"$5\", \"$6\", \"0\", \"$7\", \"0\", \"N\", \"0\")"
+			
 			dosql "$sqlInsertTestid"
 			
 			# Get last testid
-			sqlGetMaxTestid="SELECT max(testid) from $mysql_db.tests"
+			sqlGetMaxTestid="SELECT max(testid) from $DB_NAME.tests"
 
 			dosql "$sqlGetMaxTestid"
 
 			newTestid=$(echo $sqlresult | cut -d ' ' -f2)
+			;;
+			
+		1)	#running
+			
+			# Update status in tests
+			sqlUpdateStatus="UPDATE $DB_NAME.tests SET status = 1, startdate = $8 WHERE testid = $2"
 
-			echo "new testid = "$newTestid
-		
+			dosql "$sqlUpdateStatus"
 			;;
-		1)
-			echo "running" 
 			
-			;;
-		2)
-			echo "complete"
+		2)	#complete
 			
+			# Update status in tests
+			sqlUpdateStatus="UPDATE $DB_NAME.tests SET status = 2, duration = $3 WHERE testid = $2"
+
+			dosql "$sqlUpdateStatus"			
 			;;
 	esac
 }
@@ -880,9 +884,6 @@ function control_c(){
     runcleanup
     exit
 }
-echo "here"
-updateTests 0
-exit
 
 # trap keyboard interrupt (control-c)
 trap control_c SIGINT
