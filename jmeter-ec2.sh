@@ -30,7 +30,7 @@ RELEASE=$4
 COMMENT=$5
 
 # First make sure we have the required params and if not print out an instructive message
-if [ -z $PROJECT ] ; then
+if [ -z "$PROJECT" ] ; then
 	echo "jmeter-ec2: Required parameter PROJECT mssing"
 	echo
 	echo "usage: jmeter-ec2.sh [PROJECT] [INSTANCE COUNT] [ENVIRONMENT] [RELEASE] [COMMENT]"
@@ -43,6 +43,11 @@ if [ -z $PROJECT ] ; then
 	echo
 	exit
 fi
+
+# Set any null parameters to '-'
+if [ -z "$ENVIRONMENT" ] ; then ENVIRONMENT="-" ; fi
+if [ -z "$RELEASE" ] ; then RELEASE="-" ; fi
+if [ -z "$COMMENT" ] ; then COMMENT="-" ; fi
 
 # Execute the jmeter-ec2.properties file, establishing these constants.
 . jmeter-ec2.properties
@@ -535,7 +540,7 @@ function runtest() {
 	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
 	if [ ! -z "$DB_HOST" ] ; then
 		# mark test as running in database
-		updateTest 1 $newTestid x $RELEASE $PROJECT $ENVIRONMENT $COMMENT $epoch_milliseconds
+		updateTest 1 $newTestid 0 $RELEASE $PROJECT $ENVIRONMENT $COMMENT $epoch_milliseconds
 	fi
     echo "JMeter started at $start_date"
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
@@ -836,6 +841,7 @@ function updateTest() {
 			dosql "$sqlcreate"
 			
 			# Insert a new row in tests table,
+					
 			sqlInsertTestid="INSERT INTO $DB_NAME.tests (buildlife, project, environment, duration, comment, startdate, accepted, status) VALUES (\"$4\", \"$5\", \"$6\", \"0\", \"$7\", \"0\", \"N\", \"0\")"
 			
 			dosql "$sqlInsertTestid"
@@ -851,7 +857,7 @@ function updateTest() {
 		1)	#running
 			
 			# Update status in tests
-			sqlUpdateStatus="UPDATE $DB_NAME.tests SET status = 1, startdate = $8 WHERE testid = $2"
+			sqlUpdateStatus="UPDATE $DB_NAME.tests SET status = 1, startdate = $8 WHERE testid = $2"		
 
 			dosql "$sqlUpdateStatus"
 			;;
