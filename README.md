@@ -30,11 +30,11 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 * Testplans should have a Generate Summary Results Listener present and enabled (no other listeners are required).
 
 
-## Notes and useful links for installing the EC2 API Tools
+### Notes and useful links for installing the EC2 API Tools
 * Download tools from [here](http://aws.amazon.com/developertools/351/).
 * Good write-up [here](http://www.robertsosinski.com/2008/01/26/starting-amazon-ec2-with-mac-os-x/).
 
-# Example environment Vars | `vi ~/.bash_profile`
+#### Example environment Vars | `vi ~/.bash_profile`
     export EC2_HOME=~/.ec2
     export PATH=$PATH:$EC2_HOME/bin
     export EC2_PRIVATE_KEY=`ls $EC2_HOME/jmeter_key.pem`
