@@ -25,6 +25,7 @@ if [ $INSTALL_JAVA -eq 1 ] ; then
     # install java
 	
 	#ubuntu
+	sudo apt-get update #update apt-get
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -qqy install default-jre
 	wait
 
