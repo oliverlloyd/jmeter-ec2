@@ -13,9 +13,10 @@ STARTDATE=$6
 BUILDLIFE=$7
 PROJECT=$8
 ENVIRONMENT=$9
-shift 2
-COMMENT=$8
-DURATION=$9
+shift 3
+COMMENT=$7
+DURATION=$8
+TESTID=$9
 
 echo "DB_HOST: $DB_HOST"
 echo "DB_NAME: $DB_NAME"
@@ -28,6 +29,7 @@ echo "PROJECT: $PROJECT"
 echo "ENVIRONMENT: $ENVIRONMENT"
 echo "COMMENT: $COMMENT"
 echo "DURATION: $DURATION"
+echo "TESTID: $TESTID"
 
 
 sqlstr="mysql -u $DB_USER -h $DB_HOST -p$DB_PSWD $DB_NAME"
@@ -76,16 +78,17 @@ dosql "$sqlImport"
 
 
 # Get last testid
-sqlGetMaxTestid="SELECT max(testid) from $mysql_db.tests"
-
-dosql "$sqlGetMaxTestid"
-
-newTestid=$(echo $sqlresult | cut -d ' ' -f2)
-
-echo "new testid = "$newTestid
+#sqlGetMaxTestid="SELECT max(testid) from $mysql_db.tests"
+#
+#dosql "$sqlGetMaxTestid"
+#
+#newTestid=$(echo $sqlresult | cut -d ' ' -f2)
+#
+#echo "new testid = "$newTestid
+#
 
 # Update Testid in results
-sqlUpdateTestid="UPDATE $mysql_db.results SET testid = $newTestid WHERE testid IS NULL AND id > 0"
+sqlUpdateTestid="UPDATE $mysql_db.results SET testid = $TESTID WHERE testid IS NULL AND id > 0"
 
 dosql "$sqlUpdateTestid"
 

@@ -772,7 +772,8 @@ function runcleanup() {
 						'$PROJECT' \
 						'$ENVIRONMENT' \
 						'$COMMENT' \
-						'$duration'" \
+						'$duration' \
+						'$newTestid'" \
 	        > $LOCAL_HOME/$PROJECT/$DATETIME-import.out) &
     
 	    # check to see if the install scripts are complete
