@@ -13,7 +13,14 @@ Further details and idiot-level step by step instructions:
 
 
 ## Usage:
-    ./jmeter-ec2.sh [PROJECT NAME] [NUMBER OF INSTANCES DESIRED]
+    ./jmeter-ec2.sh [PROJECT] [PERCENTAGE OF THREADS TO EXECUTE] [NO. OF INSTANCES TO BUILD] [ENVIRONMENT] [RELEASE] [COMMENT]
+
+	[PROJECT]         -	required, directory and jmx name
+	[INSTANCE COUNT]  -	optional, default=1 
+	[PERCENTAGE]  	-	optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
+	[ENVIRONMENT]     -	optional, this is only used in db_mode where this text is written against the results
+	[RELEASE]         -	optional, this is only used in db_mode where this text is written against the results
+	[COMMENT]         -	optional, this is only used in db_mode where this text is written against the results
 
 **If the property REMOTE_HOSTS is set to one or more hostnames then the NUMBER OF INSTANCES value is ignored and the given REMOTE_HOSTS will be used in place of creating new hardware on Amazon.*
 
@@ -86,7 +93,7 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 	`ELASTIC_IPS=""`
 	If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
 
-	`JMETER_VERSION="apache-jmeter-2.6"`
+	`JMETER_VERSION="apache-jmeter-2.7"`
 	Allows the version to be chosen dynamically. Only works on 2.5.1, 2.6 and greater.
 
 	DATABASE SETTINGS - optional, this functionality is not currently documented.

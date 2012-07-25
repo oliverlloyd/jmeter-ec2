@@ -24,19 +24,21 @@
 
 PROJECT=$1
 INSTANCE_COUNT=$2
+PERCENTAGE=$3
 DATETIME=$(date "+%s")
-ENVIRONMENT=$3
-RELEASE=$4
-COMMENT=$5
+ENVIRONMENT=$4
+RELEASE=$5
+COMMENT=$6
 
 # First make sure we have the required params and if not print out an instructive message
 if [ -z "$PROJECT" ] ; then
 	echo "jmeter-ec2: Required parameter PROJECT mssing"
 	echo
-	echo "usage: jmeter-ec2.sh [PROJECT] [INSTANCE COUNT] [ENVIRONMENT] [RELEASE] [COMMENT]"
+	echo "usage: jmeter-ec2.sh [PROJECT] [PERCENTAGE] [INSTANCE COUNT] [ENVIRONMENT] [RELEASE] [COMMENT]"
 	echo
 	echo "[PROJECT]         -	required, directory and jmx name"
 	echo "[INSTANCE COUNT]  -	optional, default=1 "
+	echo "[PERCENTAGE]  	-	optional, default=100 "
 	echo "[ENVIRONMENT]     -	optional"
 	echo "[RELEASE]         -	optional"
 	echo "[COMMENT]         -	optional"
@@ -49,6 +51,9 @@ if [ -z "$ENVIRONMENT" ] ; then ENVIRONMENT="-" ; fi
 if [ -z "$RELEASE" ] ; then RELEASE="-" ; fi
 if [ -z "$COMMENT" ] ; then COMMENT="-" ; fi
 
+# default to 100 if PERCENTAGE is not specified
+if [ -z "$PERCENTAGE" ] ; then PERCENTAGE=100 ; fi
+	
 # Execute the jmeter-ec2.properties file, establishing these constants.
 . jmeter-ec2.properties
 
@@ -327,7 +332,7 @@ function runsetup() {
     done <<<"$filepaths"
     
     # now we use the same working file to edit thread counts
-    # to cope with the problem of trying to spread 10 threads over 3 hosts (10/3 = has a remainder) the script creates a unique jmx for each host
+    # to cope with the problem of trying to spread 10 threads over 3 hosts (10/3 has a remainder) the script creates a unique jmx for each host
     # and then passes out threads to them on a round robin basis
     # as part of this we begin here by creating a working jmx file for each separate host using _$y to isolate
     for y in "${!hosts[@]}" ; do
@@ -355,13 +360,45 @@ function runsetup() {
         
         # get count of thread groups, show results to screen
         countofthreadgroups=${#threadgroup_threadcounts[@]}
-        echo -n "editing thread counts - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [Disabled & Enabled]..."
-            
+        echo "editing thread counts..."
+		echo
+		echo " - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [inc. those disabled]"
+		
+		# sum up the thread counts
+		sumofthreadgroups=0
+        for n in ${!threadgroup_threadcounts[@]} ; do
+			# populate an array of the original thread counts (used in the find and replace when editing the jmx)
+			orig_threadcounts[$n]=${threadgroup_threadcounts[$n]}
+			# create a total of the original thread counts
+			sumofthreadgroups=$(echo "$sumofthreadgroups+${threadgroup_threadcounts[$n]}" | bc)
+        done
+
+		# adjust each thread count based on PERCENTAGE
+		sumofadjthreadgroups=0
+		for n in "${!orig_threadcounts[@]}" ; do
+			# get a new thread count to 2 decimal places
+			float=$(echo "scale=2; ${orig_threadcounts[$n]}*($PERCENTAGE/100)" | bc)
+			# round to integer
+			new_threadcounts[$n]=$(echo "($float+0.5)/1" | bc)
+			if [ "${new_threadcounts[$n]}" -eq "0" ] ; then
+				echo " - The thread group ${threadgroup_names[$n]} has ${orig_threadcounts[$n]} threads, $PERCENTAGE percent of this is $float which rounds to 0, so we're going to set it to 1 instead."
+				new_threadcounts[$n]=1
+				sumofadjthreadgroups=$(echo "$sumofadjthreadgroups+1" | bc)
+			fi
+        done
+		
+		# Now we sum up the thread counts and print a total
+        for n in ${!new_threadcounts[@]} ; do
+			sumofadjthreadgroups=$(echo "$sumofadjthreadgroups+${new_threadcounts[$n]}" | bc)
+        done
+
+        echo " - There are $sumofthreadgroups threads in the test plan, this test is set to execute $PERCENTAGE percent of these, so will run using $sumofadjthreadgroups threads"
+		
         # now we loop through each thread group, editing a separate file for each host each iteration (nested loop)
         for i in ${!threadgroup_threadcounts[@]} ; do
                 # using modulo we distribute the threads over all hosts, building the array 'threads'
                 # taking 10(threads)/3(hosts) as an example you would expect two hosts to be given 3 threads and one to be given 4.
-                for (( x=1; x<=${threadgroup_threadcounts[$i]}; x++ )); do
+                for (( x=1; x<=${new_threadcounts[$i]}; x++ )); do
                     : $(( threads[$(( $x % ${#hosts[@]} ))]++ ))
                 done
                 
@@ -370,7 +407,14 @@ function runsetup() {
                     # we're already in a loop for each thread group but awk will parse the entire file each time it is called so we need to
                     # use an index to know when to make the edit
                     # when c (awk's index) matches i (the main for loop's index) then a substitution is made
-                    findstr="threads\">"${threadgroup_threadcounts[$i]}
+
+					# first check for any null values (caused by lots of hosts and not many threads)
+					if [ -z "${threads[$y]}" ] ; then
+						echo " - Thread group ${threadgroup_names[$n]} only has ${new_threadcounts[$i]} threads, which is less than the $INSTANCE_COUNT instances. This means some hosts are given zero threads. "
+						echo "   To get around this we're giving this host an extra thread, a better solution is to revise the test configuration to use more threads / less instances"
+						threads[$y]=1
+					fi
+                    findstr="threads\">"${orig_threadcounts[$i]}
                     replacestr="threads\">"${threads[$y]}
                     awk -v "findthis=$findstr" -v "replacewiththis=$replacestr" \
                                      'BEGIN{c=0} \
@@ -388,7 +432,8 @@ function runsetup() {
                 
                 unset threads
         done
-        echo -n "done"
+		echo
+		echo "...thread counts updated"
 		echo
     fi
     
