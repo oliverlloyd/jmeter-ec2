@@ -339,105 +339,102 @@ function runsetup() {
         # for each host create a working copy of the jmx file
         cp "$working_jmx" "$working_jmx"_"$y"   
     done
-    # now, if we have multiple hosts, we loop through each threadgroup and then use a nested loop within that to edit the file for each host
-    if [ "$INSTANCE_COUNT" -gt 1 ] ; then # otherwise there's no point adjusting thread counts for a test run on a single instance
-        # pull out the current values for each thread group
-        threadgroup_threadcounts=(`awk 'BEGIN { FS = ">" } ; /ThreadGroup\.num_threads\">[^<]*</ {print $2}' $working_jmx | cut -d'<' -f1`) # put the current thread counts into variable
-        threadgroup_names=(`awk 'BEGIN { FS = "\"" } ; /ThreadGroup\" testname=\"[^\"]*\"/ {print $6}' $working_jmx`) # capture each thread group name
-        
-        # first we check to make sure each threadgroup_threadcounts is numeric
-        for n in ${!threadgroup_threadcounts[@]} ; do
-            case ${threadgroup_threadcounts[$n]} in
-                ''|*[!0-9]*)
-                    echo "Error: Thread Group: ${threadgroup_names[$n]} has the value: ${threadgroup_threadcounts[$n]}, which is not numeric - Thread Count must be numeric!"
-                    echo
-                    echo "Script exiting..."
-                    echo
-                    exit;;
-                    *);;
-            esac
-        done
-        
-        # get count of thread groups, show results to screen
-        countofthreadgroups=${#threadgroup_threadcounts[@]}
-        echo "editing thread counts..."
-		echo
-		echo " - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [inc. those disabled]"
-		
-		# sum up the thread counts
-		sumofthreadgroups=0
-        for n in ${!threadgroup_threadcounts[@]} ; do
-			# populate an array of the original thread counts (used in the find and replace when editing the jmx)
-			orig_threadcounts[$n]=${threadgroup_threadcounts[$n]}
-			# create a total of the original thread counts
-			sumofthreadgroups=$(echo "$sumofthreadgroups+${threadgroup_threadcounts[$n]}" | bc)
-        done
+    # loop through each threadgroup and then use a nested loop within that to edit the file for each host
+       # pull out the current values for each thread group
+       threadgroup_threadcounts=(`awk 'BEGIN { FS = ">" } ; /ThreadGroup\.num_threads\">[^<]*</ {print $2}' $working_jmx | cut -d'<' -f1`) # put the current thread counts into variable
+       threadgroup_names=(`awk 'BEGIN { FS = "\"" } ; /ThreadGroup\" testname=\"[^\"]*\"/ {print $6}' $working_jmx`) # capture each thread group name
+       
+       # first we check to make sure each threadgroup_threadcounts is numeric
+       for n in ${!threadgroup_threadcounts[@]} ; do
+           case ${threadgroup_threadcounts[$n]} in
+               ''|*[!0-9]*)
+                   echo "Error: Thread Group: ${threadgroup_names[$n]} has the value: ${threadgroup_threadcounts[$n]}, which is not numeric - Thread Count must be numeric!"
+                   echo
+                   echo "Script exiting..."
+                   echo
+                   exit;;
+                   *);;
+           esac
+       done
+       
+       # get count of thread groups, show results to screen
+       countofthreadgroups=${#threadgroup_threadcounts[@]}
+       echo "editing thread counts..."
+	echo
+	echo " - $PROJECT.jmx has $countofthreadgroups threadgroup(s) - [inc. those disabled]"
+	
+	# sum up the thread counts
+	sumofthreadgroups=0
+       for n in ${!threadgroup_threadcounts[@]} ; do
+		# populate an array of the original thread counts (used in the find and replace when editing the jmx)
+		orig_threadcounts[$n]=${threadgroup_threadcounts[$n]}
+		# create a total of the original thread counts
+		sumofthreadgroups=$(echo "$sumofthreadgroups+${threadgroup_threadcounts[$n]}" | bc)
+       done
 
-		# adjust each thread count based on PERCENTAGE
-		sumofadjthreadgroups=0
-		for n in "${!orig_threadcounts[@]}" ; do
-			# get a new thread count to 2 decimal places
-			float=$(echo "scale=2; ${orig_threadcounts[$n]}*($PERCENTAGE/100)" | bc)
-			# round to integer
-			new_threadcounts[$n]=$(echo "($float+0.5)/1" | bc)
-			if [ "${new_threadcounts[$n]}" -eq "0" ] ; then
-				echo " - The thread group ${threadgroup_names[$n]} has ${orig_threadcounts[$n]} threads, $PERCENTAGE percent of this is $float which rounds to 0, so we're going to set it to 1 instead."
-				new_threadcounts[$n]=1
-				sumofadjthreadgroups=$(echo "$sumofadjthreadgroups+1" | bc)
+	# adjust each thread count based on PERCENTAGE
+	sumofadjthreadgroups=0
+	for n in "${!orig_threadcounts[@]}" ; do
+		# get a new thread count to 2 decimal places
+		float=$(echo "scale=2; ${orig_threadcounts[$n]}*($PERCENTAGE/100)" | bc)
+		# round to integer
+		new_threadcounts[$n]=$(echo "($float+0.5)/1" | bc)
+		if [ "${new_threadcounts[$n]}" -eq "0" ] ; then
+			echo " - Thread group ${threadgroup_names[$n]} has ${orig_threadcounts[$n]} threads, $PERCENTAGE percent of this is $float which rounds to 0, so we're going to set it to 1 instead."
+			new_threadcounts[$n]=1
+			sumofadjthreadgroups=$(echo "$sumofadjthreadgroups+1" | bc)
+		fi
+	done
+	
+	# Now we sum up the thread counts and print a total
+	for n in ${!new_threadcounts[@]} ; do
+		sumofadjthreadgroups=$(echo "$sumofadjthreadgroups+${new_threadcounts[$n]}" | bc)
+	done
+
+	echo " - There are $sumofthreadgroups threads in the test plan, this test is set to execute $PERCENTAGE percent of these, so will run using $sumofadjthreadgroups threads"
+
+	# now we loop through each thread group, editing a separate file for each host each iteration (nested loop)
+	for i in ${!threadgroup_threadcounts[@]} ; do
+		# using modulo we distribute the threads over all hosts, building the array 'threads'
+		# taking 10(threads)/3(hosts) as an example you would expect two hosts to be given 3 threads and one to be given 4.
+		for (( x=1; x<=${new_threadcounts[$i]}; x++ )); do
+			: $(( threads[$(( $x % ${#hosts[@]} ))]++ ))
+		done
+
+		# here we loop through every host, editing the jmx file and using a temp file to carry the changes over
+		for y in "${!hosts[@]}" ; do
+			# we're already in a loop for each thread group but awk will parse the entire file each time it is called so we need to
+			# use an index to know when to make the edit
+			# when c (awk's index) matches i (the main for loop's index) then a substitution is made
+
+			# first check for any null values (caused by lots of hosts and not many threads)
+			if [ -z "${threads[$y]}" ] ; then
+				echo " - Thread group $n only has ${new_threadcounts[$i]} threads, which is less than the $INSTANCE_COUNT instances. This means some hosts are given zero threads. "
+				echo "   To get around this we're giving this host an extra thread, a better solution is to revise the test configuration to use more threads / less instances"
+				threads[$y]=1
 			fi
-        done
-		
-		# Now we sum up the thread counts and print a total
-        for n in ${!new_threadcounts[@]} ; do
-			sumofadjthreadgroups=$(echo "$sumofadjthreadgroups+${new_threadcounts[$n]}" | bc)
-        done
+			findstr="threads\">"${orig_threadcounts[$i]}
+			replacestr="threads\">"${threads[$y]}
+			awk -v "findthis=$findstr" -v "replacewiththis=$replacestr" \
+				'BEGIN{c=0} \
+				/ThreadGroup\.num_threads\">[^<]*</ \
+				{if(c=='"$i"'){sub(findthis,replacewiththis)};c++}1' \
+				"$working_jmx"_"$y" > "$temp_jmx"_"$y"
 
-        echo " - There are $sumofthreadgroups threads in the test plan, this test is set to execute $PERCENTAGE percent of these, so will run using $sumofadjthreadgroups threads"
-		
-        # now we loop through each thread group, editing a separate file for each host each iteration (nested loop)
-        for i in ${!threadgroup_threadcounts[@]} ; do
-                # using modulo we distribute the threads over all hosts, building the array 'threads'
-                # taking 10(threads)/3(hosts) as an example you would expect two hosts to be given 3 threads and one to be given 4.
-                for (( x=1; x<=${new_threadcounts[$i]}; x++ )); do
-                    : $(( threads[$(( $x % ${#hosts[@]} ))]++ ))
-                done
-                
-                # here we loop through every host, editing the jmx file and using a temp file to carry the changes over
-                for y in "${!hosts[@]}" ; do
-                    # we're already in a loop for each thread group but awk will parse the entire file each time it is called so we need to
-                    # use an index to know when to make the edit
-                    # when c (awk's index) matches i (the main for loop's index) then a substitution is made
+			# using awk requires the use of a temp file to save the results of the command, update the working file with this file
+			rm "$working_jmx"_"$y"
+			mv "$temp_jmx"_"$y" "$working_jmx"_"$y"
+		done
 
-					# first check for any null values (caused by lots of hosts and not many threads)
-					if [ -z "${threads[$y]}" ] ; then
-						echo " - Thread group ${threadgroup_names[$n]} only has ${new_threadcounts[$i]} threads, which is less than the $INSTANCE_COUNT instances. This means some hosts are given zero threads. "
-						echo "   To get around this we're giving this host an extra thread, a better solution is to revise the test configuration to use more threads / less instances"
-						threads[$y]=1
-					fi
-                    findstr="threads\">"${orig_threadcounts[$i]}
-                    replacestr="threads\">"${threads[$y]}
-                    awk -v "findthis=$findstr" -v "replacewiththis=$replacestr" \
-                                     'BEGIN{c=0} \
-                                     /ThreadGroup\.num_threads\">[^<]*</ \
-                                     {if(c=='"$i"'){sub(findthis,replacewiththis)};c++}1' \
-                                     "$working_jmx"_"$y" > "$temp_jmx"_"$y"
+		# write update to screen - removed 23/04/2012
+		# echo "...$i) ${threadgroup_names[$i]} has ${threadgroup_threadcounts[$i]} thread(s), to be distributed over $INSTANCE_COUNT instance(s)"
+
+		unset threads
+	done
+	echo
+	echo "...thread counts updated"
+	echo
     
-                    # using awk requires the use of a temp file to save the results of the command, update the working file with this file
-                    rm "$working_jmx"_"$y"
-                    mv "$temp_jmx"_"$y" "$working_jmx"_"$y"
-                done
-                
-                # write update to screen - removed 23/04/2012
-                # echo "...$i) ${threadgroup_names[$i]} has ${threadgroup_threadcounts[$i]} thread(s), to be distributed over $INSTANCE_COUNT instance(s)"
-                
-                unset threads
-        done
-		echo
-		echo "...thread counts updated"
-		echo
-    fi
-    
-    echo
     # scp the test files onto each host
     echo -n "copying test files to $INSTANCE_COUNT server(s)..."
     
