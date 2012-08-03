@@ -11,16 +11,16 @@ Unlike distributed mode, you do not need to adjust the test parameters to ensure
 Further details and idiot-level step by step instructions:
     [http://www.http503.com/2012/jmeter-ec2/](http://www.http503.com/2012/jmeter-ec2/)
 
-
 ## Usage:
-    ./jmeter-ec2.sh [PROJECT] [PERCENTAGE OF THREADS TO EXECUTE] [NO. OF INSTANCES TO BUILD] [ENVIRONMENT] [RELEASE] [COMMENT]
+    project="abc" percent=20 count="3" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 
-	[PROJECT]         -	required, directory and jmx name
-	[INSTANCE COUNT]  -	optional, default=1 
-	[PERCENTAGE]  	-	optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
-	[ENVIRONMENT]     -	optional, this is only used in db_mode where this text is written against the results
-	[RELEASE]         -	optional, this is only used in db_mode where this text is written against the results
-	[COMMENT]         -	optional, this is only used in db_mode where this text is written against the results
+    [project]         -	required, directory and jmx name
+    [count]           -	optional, default=1 
+    [percent]         -	optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
+    [env]             -	optional, this is only used in db_mode where this text is written against the results
+    [release]         -	optional, this is only used in db_mode where this text is written against the results
+    [comment]         -	optional, this is only used in db_mode where this text is written against the results
+
 
 **If the property REMOTE_HOSTS is set to one or more hostnames then the NUMBER OF INSTANCES value is ignored and the given REMOTE_HOSTS will be used in place of creating new hardware on Amazon.*
 
@@ -104,7 +104,7 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 
 6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
 
-7. Type: `./jmeter-ec2.sh someproject 1`
+7. Type: `project="someproject"count="1" ./jmeter-ec2.sh`
 
 Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
 
