@@ -28,11 +28,13 @@ DATETIME=$(date "+%s")
 if [ -z "$project" ] ; then
 	echo "jmeter-ec2: Required parameter 'project' mssing"
 	echo
-	echo 'usage: project="abc" percent=20 count="3" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
+	echo 'usage: project="abc" percent=20 setup="TRUE" terminate="TRUE" count="3" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 	echo
 	echo "[project]         -	required, directory and jmx name"
-	echo "[count]           -	optional, default=1 "
-	echo "[percent]         -	optional, default=100 "
+	echo "[count]           -	optional, default=1"
+	echo "[percent]         -	optional, default=100"
+	echo "[setup]           -	optional, default='TRUE'"
+	echo "[terminate]       -	optional, default='TRUE'"
 	echo "[env]             -	optional"
 	echo "[release]         -	optional"
 	echo "[comment]         -	optional"
@@ -47,10 +49,16 @@ if [ -z "$comment" ] ; then comment="-" ; fi
 
 # default to 100 if percent is not specified
 if [ -z "$percent" ] ; then percent=100 ; fi
-echo "count $count"
+	
+# default to TRUE if setup is not specified
+if [ -z "$setup" ] ; then setup="TRUE" ; fi
+
+# default to TRUE if terminate is not specified
+if [ -z "$terminate" ] ; then terminate="TRUE" ; fi
+	
 # move count to instance_count
 instance_count=$count
-echo "instance_count $instance_count"	
+
 # Execute the jmeter-ec2.properties file, establishing these constants.
 . jmeter-ec2.properties
 
@@ -92,7 +100,7 @@ function runsetup() {
 
         # default to 1 instance if a count is not specified
         if [ -z "$instance_count" ] ; then instance_count=1; fi
-			echo "instance_count: $instance_count"
+
         echo
         echo "   -------------------------------------------------------------------------------------"
         echo "       jmeter-ec2 Automation Script - Running $project.jmx over $instance_count AWS Instance(s)"
@@ -167,12 +175,14 @@ function runsetup() {
             if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
                 countof_instanceids=0
                 echo "no instances successfully initialised, exiting"
-				echo
-			    # attempt to terminate any running instances - just to be sure
-		        echo "terminating instance(s)..."
-				# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
-		        ec2-terminate-instances ${attempted_instanceids[@]}
-		        echo
+				if [ "$terminate" = "TRUE" ] ; then
+					echo
+				    # attempt to terminate any running instances - just to be sure
+			        echo "terminating instance(s)..."
+					# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
+			        ec2-terminate-instances --region $REGION ${attempted_instanceids[@]}
+			        echo
+				fi
                 exit
             else
                 countof_instanceids=${#healthy_instanceids[@]}
@@ -738,10 +748,12 @@ function runcleanup() {
     
     # terminate any running instances created
     if [ -z "$REMOTE_HOSTS" ]; then
-        echo "terminating instance(s)..."
-		# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
-        ec2-terminate-instances ${attempted_instanceids[@]}
-        echo
+		if [ "$terminate" = "TRUE" ] ; then
+	        echo "terminating instance(s)..."
+			# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
+	        ec2-terminate-instances --region $REGION ${attempted_instanceids[@]}
+	        echo
+		fi
     fi
     
     
