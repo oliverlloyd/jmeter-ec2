@@ -12,11 +12,13 @@ Further details and idiot-level step by step instructions:
     [http://www.http503.com/2012/jmeter-ec2/](http://www.http503.com/2012/jmeter-ec2/)
 
 ## Usage:
-    project="abc" percent=20 count="3" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
+    project="abc" percent=20 count="3" terminate="TRUE" setup="TRUE" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 
     [project]         -	required, directory and jmx name
     [count]           -	optional, default=1 
     [percent]         -	optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
+    [setup]           -	optional, default=TRUE. Set to "FALSE" if a pre-defined host is being used that has already been setup (had files copied to it, jmeter installed, etc.)
+    [terminate]       -	optional, default=TRUE. Set to "FALSE" if the instances created should not be terminated.
     [env]             -	optional, this is only used in db_mode where this text is written against the results
     [release]         -	optional, this is only used in db_mode where this text is written against the results
     [comment]         -	optional, this is only used in db_mode where this text is written against the results
