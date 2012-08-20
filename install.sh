@@ -3,6 +3,9 @@
 # jmeter-ec2 - Install Script (Runs on remote ec2 server)
 #
 
+# Source the jmeter-ec2.properties file, establishing these constants.
+. /tmp/jmeter-ec2.properties
+
 REMOTE_HOME=$1
 INSTALL_JAVA=$2
 JMETER_VERSION=$3
@@ -39,6 +42,7 @@ if [ $INSTALL_JAVA -eq 1 ] ; then
 #        chmod 755 $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
 #        $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
 #    fi
+
 fi
 
 # install jmeter
