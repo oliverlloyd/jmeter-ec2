@@ -26,7 +26,7 @@ DATETIME=$(date "+%s")
 
 # First make sure we have the required params and if not print out an instructive message
 if [ -z "$project" ] ; then
-	echo "jmeter-ec2: Required parameter 'project' mssing"
+	echo "jmeter-ec2: Required parameter 'project' missing"
 	echo
 	echo 'usage: project="abc" percent=20 setup="TRUE" terminate="TRUE" count="3" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 	echo
@@ -111,10 +111,11 @@ function runsetup() {
         # create the instance(s) and capture the instance id(s)
         echo -n "requesting $instance_count instance(s)..."
         attempted_instanceids=(`ec2-run-instances \
-                    --key $PEM_FILE \
+		    --key $AMAZON_KEYPAIR_NAME \
                     -t $INSTANCE_TYPE \
                     -g $INSTANCE_SECURITYGROUP \
                     -n 1-$instance_count \
+		    --region $REGION \
                     --availability-zone \
                     $INSTANCE_AVAILABILITYZONE $AMI_ID \
                     | awk '/^INSTANCE/ {print $2}'`)
@@ -146,7 +147,7 @@ function runsetup() {
         do
             echo -n .
             status_check_count=$(( $status_check_count + 1))
-            count_passed=$(ec2-describe-instance-status ${attempted_instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+            count_passed=$(ec2-describe-instance-status --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
             sleep 1
         done
         
@@ -160,17 +161,17 @@ function runsetup() {
 			done
 			
 			# set hosts array
-            hosts=(`ec2-describe-instances ${attempted_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
+            hosts=(`ec2-describe-instances --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
             echo "all hosts ready"
         else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
             original_count=$countof_instanceids
             # filter requested instances for only those that started well
-            healthy_instanceids=(`ec2-describe-instance-status ${attempted_instanceids[@]} \
+            healthy_instanceids=(`ec2-describe-instance-status --region $REGION ${attempted_instanceids[@]} \
                                 --filter instance-status.reachability=passed \
                                 --filter system-status.reachability=passed \
                                 | awk '/INSTANCE\t/ {print $2}'`)
 
-            hosts=(`ec2-describe-instances ${healthy_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
+            hosts=(`ec2-describe-instances --region $REGION ${healthy_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
 
             if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
                 countof_instanceids=0
@@ -223,7 +224,7 @@ function runsetup() {
             echo -n "checking elastic ips..."
             for x in "${!instanceids[@]}" ; do
 				# check for ssh connectivity on the new address
-	            while ssh -o StrictHostKeyChecking=no -q -i $PEM_PATH/$PEM_FILE.pem \
+	            while ssh -o StrictHostKeyChecking=no -q -i $PEM_PATH/$PEM_FILE \
 	                $USER@${hosts[x]} true && test; \
 	                do echo -n .; sleep 1; done
 	            # Note. If any IP is already in use on an instance that is still running then the ssh check above will return
@@ -254,7 +255,7 @@ function runsetup() {
 	            -o StrictHostKeyChecking=no \
 	            -o "BatchMode=yes" \
 	            -o "ConnectTimeout 15" \
-	            -i $PEM_PATH/$PEM_FILE.pem \
+	            -i $PEM_PATH/$PEM_FILE \
 	            $USER@$host echo up 2>&1)" == "up" ] ; then
 	            echo "Host $host is not responding, script exiting..."
 	            echo
@@ -264,47 +265,49 @@ function runsetup() {
     fi
 	
     # scp install.sh
-    echo -n "copying install.sh to $instance_count server(s)..."
-    for host in ${hosts[@]} ; do
-        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                      -i $PEM_PATH/$PEM_FILE.pem \
-                                      $LOCAL_HOME/install.sh \
-                                      $USER@$host:$REMOTE_HOME \
-                                      && echo "done" > $LOCAL_HOME/$project/$DATETIME-$host-scpinstall.out)
-    done
+    if [ "$setup" = "TRUE" ] ; then
+    	echo -n "copying install.sh to $instance_count server(s)..."
+	    for host in ${hosts[@]} ; do
+	        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                      -i $PEM_PATH/$PEM_FILE \
+	                                      $LOCAL_HOME/install.sh \
+					      $LOCAL_HOME/jmeter-ec2.properties \
+	                                      $USER@$host:$REMOTE_HOME \
+	                                      && echo "done" > $LOCAL_HOME/$project/$DATETIME-$host-scpinstall.out)
+	    done
+
+	    # check to see if the scp call is complete (could just use the wait command here...)
+	    res=0
+	    while [ "$res" != "$instance_count" ] ;
+	    do
+	        echo -n .
+	        res=$(grep -c "done" $LOCAL_HOME/$project/$DATETIME*scpinstall.out \
+	            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+	        sleep 3
+	    done
+	    echo "complete"
+	    echo
     
-    # check to see if the scp call is complete (could just use the wait command here...)
-    res=0
-    while [ "$res" != "$instance_count" ] ;
-    do
-        echo -n .
-        res=$(grep -c "done" $LOCAL_HOME/$project/$DATETIME*scpinstall.out \
-            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-        sleep 3
-    done
-    echo "complete"
-    echo
+	    # Install test software
+	    echo "running install.sh on $instance_count server(s)..."
+	    for host in ${hosts[@]} ; do
+	        (ssh -nq -o StrictHostKeyChecking=no \
+	            -i $PEM_PATH/$PEM_FILE $USER@$host \
+	            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION"\
+	            > $LOCAL_HOME/$project/$DATETIME-$host-install.out) &
+	    done
     
-    # Install test software
-    echo "running install.sh on $instance_count server(s)..."
-    for host in ${hosts[@]} ; do
-        (ssh -nq -o StrictHostKeyChecking=no \
-            -i $PEM_PATH/$PEM_FILE.pem $USER@$host \
-            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION"\
-            > $LOCAL_HOME/$project/$DATETIME-$host-install.out) &
-    done
-    
-    # check to see if the install scripts are complete
-    res=0
-    while [ "$res" != "$instance_count" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
-        echo -n .
-        res=$(grep -c "software installed" $LOCAL_HOME/$project/$DATETIME*install.out \
-            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-        sleep 3
-    done
-    echo "complete"
-    echo
-    
+	    # check to see if the install scripts are complete
+	    res=0
+	    while [ "$res" != "$instance_count" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
+	        echo -n .
+	        res=$(grep -c "software installed" $LOCAL_HOME/$project/$DATETIME*install.out \
+	            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+	        sleep 3
+	    done
+	    echo "complete"
+	    echo
+    fi
     
     # Create a working jmx file and edit it to adjust thread counts and filepaths (leave the original jmx intact!)
     cp $LOCAL_HOME/$project/jmx/$project.jmx $LOCAL_HOME/$project/working
@@ -453,7 +456,7 @@ function runsetup() {
     echo -n "jmx files.."
     for y in "${!hosts[@]}" ; do
         (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-                                      -i $PEM_PATH/$PEM_FILE.pem \
+                                      -i $PEM_PATH/$PEM_FILE \
                                       $LOCAL_HOME/$project/working_$y \
                                       $USER@${hosts[$y]}:$REMOTE_HOME/execute.jmx) &
     done
@@ -461,89 +464,91 @@ function runsetup() {
     echo -n "done...."
     
     # scp data dir
-    if [ -r $LOCAL_HOME/$project/data ] ; then # don't try to upload this optional dir if it is not present
-        echo -n "data dir.."
-        for host in ${hosts[@]} ; do
-            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-                                          -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/$project/data \
-                                          $USER@$host:$REMOTE_HOME/) &
-        done
-        wait
-        echo -n "done...."
-    fi
+    if [ "$setup" = "TRUE" ] ; then
+    	if [ -r $LOCAL_HOME/$project/data ] ; then # don't try to upload this optional dir if it is not present
+	        echo -n "data dir.."
+	        for host in ${hosts[@]} ; do
+	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          $LOCAL_HOME/$project/data \
+	                                          $USER@$host:$REMOTE_HOME/) &
+	        done
+	        wait
+	        echo -n "done...."
+	    fi
     
-    # scp jmeter.properties
-    if [ -r $LOCAL_HOME/jmeter.properties ] ; then # don't try to upload this optional file if it is not present
-        echo -n "jmeter.properties.."
-        for host in ${hosts[@]} ; do
-            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                          -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/jmeter.properties \
-                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
-        done
-        wait
-        echo -n "done...."
-    fi
+	    # scp jmeter.properties
+	    if [ -r $LOCAL_HOME/jmeter.properties ] ; then # don't try to upload this optional file if it is not present
+	        echo -n "jmeter.properties.."
+	        for host in ${hosts[@]} ; do
+	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          $LOCAL_HOME/jmeter.properties \
+	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
+	        done
+	        wait
+	        echo -n "done...."
+	    fi
     
-    # scp jmeter execution file
-    if [ -r $LOCAL_HOME/jmeter ] ; then # don't try to upload this optional file if it is not present
-        echo -n "jmeter execution file..."
-        for host in ${hosts[@]} ; do
-            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                          -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/jmeter \
-                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
-        done
-        wait
-        echo -n "done...."
-    fi
+	    # scp jmeter execution file
+	    if [ -r $LOCAL_HOME/jmeter ] ; then # don't try to upload this optional file if it is not present
+	        echo -n "jmeter execution file..."
+	        for host in ${hosts[@]} ; do
+	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          $LOCAL_HOME/jmeter $LOCAL_HOME/jmeter \
+	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
+	        done
+	        wait
+	        echo -n "done...."
+	    fi
     
-	# scp any custom jar files
-    if [ -d $LOCAL_HOME/plugins ] && [ -n $(ls $LOCAL_HOME/plugins/) ] ; then # don't try to upload any files if none present
-        echo -n "custom jar file(s)..."
-        for host in ${hosts[@]} ; do
-            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                          -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/plugins/*.jar \
-                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
-        done
-        wait
-        echo -n "done...."
-    fi
+		# scp any custom jar files
+	    if [ -d $LOCAL_HOME/plugins ] && [ -n $(ls $LOCAL_HOME/plugins/) ] ; then # don't try to upload any files if none present
+	        echo -n "custom jar file(s)..."
+	        for host in ${hosts[@]} ; do
+	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          $LOCAL_HOME/plugins/*.jar \
+	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
+	        done
+	        wait
+	        echo -n "done...."
+	    fi
 	
-    # scp any project specific custom jar files
-    if [ -d $LOCAL_HOME/$project/plugins ] && [ -n $(ls $LOCAL_HOME/$project/plugins/) ] ; then # don't try to upload any files if none present
-        echo -n "project specific jar file(s)..."
-        for host in ${hosts[@]} ; do
-            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                          -i $PEM_PATH/$PEM_FILE.pem \
-                                          $LOCAL_HOME/$project/plugins/*.jar \
-                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
-        done
-        wait
-        echo -n "done...."
-    fi
+	    # scp any project specific custom jar files
+	    if [ -d $LOCAL_HOME/$project/plugins ] && [ -n $(ls $LOCAL_HOME/$project/plugins/) ] ; then # don't try to upload any files if none present
+	        echo -n "project specific jar file(s)..."
+	        for host in ${hosts[@]} ; do
+	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          $LOCAL_HOME/$project/plugins/*.jar \
+	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
+	        done
+	        wait
+	        echo -n "done...."
+	    fi
 	
-	if [ ! -z "$DB_HOST" ] ; then
-		# upload import-results.sh
-	    echo -n "copying import-results.sh to database..."
-	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
-	                                  $LOCAL_HOME/import-results.sh \
-	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
-		wait
+		if [ ! -z "$DB_HOST" ] ; then
+			# upload import-results.sh
+		    echo -n "copying import-results.sh to database..."
+		    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+		                                  -i $DB_PEM_PATH/$DB_PEM_FILE \
+		                                  $LOCAL_HOME/import-results.sh \
+		                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
+			wait
 		
-		# set permissions
-	    (ssh -n -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
-			"chmod 755 $REMOTE_HOME/import-results.sh")
-		wait
-		echo -n "done...."
-	fi
+			# set permissions
+		    (ssh -n -o StrictHostKeyChecking=no \
+		        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
+				"chmod 755 $REMOTE_HOME/import-results.sh")
+			wait
+			echo -n "done...."
+		fi
 
-	echo "all files uploaded"
-    echo   
+		echo "all files uploaded"
+	    echo   
+	fi
 	
 	if [ ! -z "$DB_HOST" ] ; then
 		# Add an entry to the tests table in the database
@@ -552,6 +557,8 @@ function runsetup() {
 		echo "testid $newTestid created"
 		echo
 	fi
+	
+    echo
     
     # run jmeter test plan
     echo "starting jmeter on:"
@@ -561,7 +568,7 @@ function runsetup() {
     #
     #    ssh -nq -o UserKnownHostsFile=/dev/null \
     #         -o StrictHostKeyChecking=no \
-    #        -i $PEM_PATH/$PEM_FILE.pem $USER@${host[$counter]} \               # ec2 key file
+    #        -i $PEM_PATH/$PEM_FILE $USER@${host[$counter]} \               # ec2 key file
     #        $REMOTE_HOME/$JMETER_VERSION/bin/jmeter.sh -n \               # execute jmeter - non GUI - from where it was just installed
     #        -t $REMOTE_HOME/execute.jmx \                                      # run the jmx file that was uploaded
     #        -l $REMOTE_HOME/$project-$DATETIME-$counter.jtl \                  # write results to the root of remote home
@@ -571,11 +578,11 @@ function runsetup() {
     #
     for counter in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
-        -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$counter]} \
+        -i $PEM_PATH/$PEM_FILE $USER@${hosts[$counter]} \
         $REMOTE_HOME/$JMETER_VERSION/bin/jmeter.sh -n \
         -t $REMOTE_HOME/execute.jmx \
         -l $REMOTE_HOME/$project-$DATETIME-$counter.jtl \
-        > $LOCAL_HOME/$project/$DATETIME-${hosts[$counter]}-jmeter.out ) &
+        >> $LOCAL_HOME/$project/$DATETIME-${hosts[$counter]}-jmeter.out ) &
     done
     echo
     echo
@@ -738,7 +745,7 @@ function runcleanup() {
         echo -n "downloading results from ${hosts[$i]}..."
         scp -q -C -o UserKnownHostsFile=/dev/null \
                                      -o StrictHostKeyChecking=no \
-                                     -i $PEM_PATH/$PEM_FILE.pem \
+                                     -i $PEM_PATH/$PEM_FILE \
                                      $USER@${hosts[$i]}:$REMOTE_HOME/$project-$DATETIME-$i.jtl \
                                      $LOCAL_HOME/$project/
         echo "$LOCAL_HOME/$project/$project-$DATETIME-$i.jtl complete"
@@ -802,20 +809,32 @@ function runcleanup() {
 	# IMPORT RESULTS TO MYSQL DATABASE - IF SPECIFIED IN PROPERTIES
 	# scp import-results.sh
 	if [ ! -z "$DB_HOST" ] ; then
-		
+	    echo -n "copying import-results.sh to database..."
+	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE \
+	                                  $LOCAL_HOME/import-results.sh \
+	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
+		wait
+		echo -n "done...."
+	
 	    # scp results to remote db
 	    echo -n "uploading jtl file to database.."
 	    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-	                                  -i $DB_PEM_PATH/$DB_PEM_FILE.pem \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE \
 	                                  $LOCAL_HOME/$project/results/$project-$DATETIME-complete.jtl \
 	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
 	    wait
 	    echo -n "done...."
 
+		# set permissions
+	    (ssh -n -o StrictHostKeyChecking=no \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
+			"chmod 755 $REMOTE_HOME/import-results.sh")
+
 	    # Import jtl to database...
 	    echo -n "importing jtl file..."
 	    (ssh -nq -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
 	        "$REMOTE_HOME/import-results.sh \
 						'localhost' \
 						'$DB_NAME' \
@@ -869,7 +888,7 @@ function updateTest() {
 		#echo "sqlstmt = '"$1"'"
 		#echo "sqlstr = '"$sqlstr"'"
 		sqlresult=$(ssh -nq -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE.pem $DB_PEM_USER@$DB_HOST \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
 			"$sqlstr -e '$1'")
 			
 		#echo "sqlresult = '"$sqlresult"'"
@@ -937,7 +956,7 @@ function control_c(){
     echo "> Stopping test..."
     for f in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
-        -i $PEM_PATH/$PEM_FILE.pem $USER@${hosts[$f]} \
+        -i $PEM_PATH/$PEM_FILE $USER@${hosts[$f]} \
         $REMOTE_HOME/$JMETER_VERSION/bin/stoptest.sh ) &
     done
     wait
