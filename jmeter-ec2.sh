@@ -775,9 +775,12 @@ function runcleanup() {
 	
 	# Srt File
     sort $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
+
+    # Insert TESTID
+    awk -v v_testid="$newTestid," '{print v_testid,$0}' $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
 	
 	# Remove blank lines
-	sed '/^$/d' $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
+	sed '/^$/d' $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
 
     # Split the thread label into two columns
     #sed 's/ \([0-9][0-9]*-[0-9][0-9]*,\)/,\1/' \
@@ -788,8 +791,8 @@ function runcleanup() {
 	sed '/^0,0,Error:/d' $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl
 	
 	# Calclulate test duration
-	start_time=$(head -1 $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl | cut -d',' -f1)
-	end_time=$(tail -1 $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl | cut -d',' -f1)
+	start_time=$(head -1 $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl | cut -d',' -f2)
+	end_time=$(tail -1 $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl | cut -d',' -f2)
 	duration=$(echo "$end_time-$start_time" | bc)
 	if [ ! $duration > 0 ] ; then
 		duration=0;
@@ -801,9 +804,10 @@ function runcleanup() {
 	fi
 	
 	# Tidy up
-    rm $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl
-    rm $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
-    rm $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
+    # rm $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl
+    # rm $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
+    # rm $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
+    # rm $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
     mkdir -p $LOCAL_HOME/$project/results/
     mv $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl $LOCAL_HOME/$project/results/
 	

@@ -72,7 +72,7 @@ dosql "$sqlcreate"
 sqlImport="load data local infile '$RESULTS_FILE' \
 			into table $mysql_db.results fields terminated by ',' \
 			enclosed by '\"' lines terminated by '\n' \
-			(timestamp,elapsed,label,responsecode,responsemessage,threadname,datatype,success,bytes,grpthreads,allthreads,latency,hostname)"
+			(testid,timestamp,elapsed,label,responsecode,responsemessage,threadname,datatype,success,bytes,grpthreads,allthreads,latency,hostname)"
 
 dosql "$sqlImport"
 
@@ -87,9 +87,10 @@ dosql "$sqlImport"
 #echo "new testid = "$newTestid
 #
 
-# Update Testid in results
-sqlUpdateTestid="UPDATE $mysql_db.results SET testid = $TESTID WHERE testid IS NULL AND id > 0"
 
-dosql "$sqlUpdateTestid"
+# Update Testid in results
+# sqlUpdateTestid="UPDATE $mysql_db.results SET testid = $TESTID WHERE testid IS NULL AND id > 0"
+
+# dosql "$sqlUpdateTestid"
 
 echo 'import complete';
