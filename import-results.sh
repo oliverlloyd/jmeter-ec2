@@ -77,20 +77,4 @@ sqlImport="load data local infile '$RESULTS_FILE' \
 dosql "$sqlImport"
 
 
-# Get last testid
-#sqlGetMaxTestid="SELECT max(testid) from $mysql_db.tests"
-#
-#dosql "$sqlGetMaxTestid"
-#
-#newTestid=$(echo $sqlresult | cut -d ' ' -f2)
-#
-#echo "new testid = "$newTestid
-#
-
-
-# Update Testid in results
-# sqlUpdateTestid="UPDATE $mysql_db.results SET testid = $TESTID WHERE testid IS NULL AND id > 0"
-
-# dosql "$sqlUpdateTestid"
-
 echo 'import complete';

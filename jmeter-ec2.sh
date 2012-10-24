@@ -804,10 +804,10 @@ function runcleanup() {
 	fi
 	
 	# Tidy up
-    # rm $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl
-    # rm $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
-    # rm $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
-    # rm $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
+    rm $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl
+    rm $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
+    rm $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
+    rm $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
     mkdir -p $LOCAL_HOME/$project/results/
     mv $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl $LOCAL_HOME/$project/results/
 	
