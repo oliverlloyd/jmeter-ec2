@@ -555,7 +555,7 @@ function runsetup() {
 	if [ ! -z "$DB_HOST" ] ; then
 		# Add an entry to the tests table in the database
 		echo -n "creating new test in database..."
-		updateTest 0 x x $release $project $env $comment 
+		updateTest 0 x x "$release" "$project" "$env" "$comment" 
 		echo "testid $newTestid created"
 		echo
 	fi
@@ -602,7 +602,7 @@ function runtest() {
 	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
 	if [ ! -z "$DB_HOST" ] ; then
 		# mark test as running in database
-		updateTest 1 $newTestid 0 $release $project $env $comment $epoch_milliseconds
+		updateTest 1 "$newTestid" 0 "$release" "$project" "$env" "$comment" "$epoch_milliseconds"
 	fi
     echo "JMeter started at $start_date"
     echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
@@ -800,7 +800,7 @@ function runcleanup() {
 	
 	if [ ! -z "$DB_HOST" ] ; then
 		# mark test as complete in database
-		updateTest 2 $newTestid $duration
+		updateTest 2 "$newTestid" "$duration"
 	fi
 	
 	# Tidy up
