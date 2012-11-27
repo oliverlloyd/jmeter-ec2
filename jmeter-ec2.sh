@@ -111,11 +111,11 @@ function runsetup() {
         # create the instance(s) and capture the instance id(s)
         echo -n "requesting $instance_count instance(s)..."
         attempted_instanceids=(`ec2-run-instances \
-		    --key $AMAZON_KEYPAIR_NAME \
+		            --key $AMAZON_KEYPAIR_NAME \
                     -t $INSTANCE_TYPE \
                     -g $INSTANCE_SECURITYGROUP \
                     -n 1-$instance_count \
-		    --region $REGION \
+		            --region $REGION \
                     --availability-zone \
                     $INSTANCE_AVAILABILITYZONE $AMI_ID \
                     | awk '/^INSTANCE/ {print $2}'`)
@@ -204,11 +204,12 @@ function runsetup() {
 		
 		# assign a name tag to each instance
 		echo "assigning tags..."
-		(ec2-create-tags ${attempted_instanceids[@]} --tag ProductKey=PerformanceTest)
-        (ec2-create-tags ${attempted_instanceids[@]} --tag Service=prod)
-        (ec2-create-tags ${attempted_instanceids[@]} --tag Owner=$EMAIL)
-        (ec2-create-tags ${attempted_instanceids[@]} --tag ContactEmail=$EMAIL)
-		(ec2-create-tags ${attempted_instanceids[@]} --tag Name="jmeter-ec2-$project")
+		(ec2-create-tags --region $REGION ${attempted_instanceids[@]} --tag ProductKey=$project)
+        (ec2-create-tags --region $REGION ${attempted_instanceids[@]} --tag Service=prod)
+        (ec2-create-tags --region $REGION ${attempted_instanceids[@]} --tag Description=PerformanceTest)
+        (ec2-create-tags --region $REGION ${attempted_instanceids[@]} --tag Owner=$EMAIL)
+        (ec2-create-tags --region $REGION ${attempted_instanceids[@]} --tag ContactEmail=$EMAIL)
+		(ec2-create-tags --region $REGION ${attempted_instanceids[@]} --tag Name="jmeter-ec2-$project")
 		wait
         echo "complete"
 		echo
