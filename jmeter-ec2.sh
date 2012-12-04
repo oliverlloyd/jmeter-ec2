@@ -779,8 +779,12 @@ function runcleanup() {
     sort $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
 
     # Insert TESTID
-    awk -v v_testid="$newTestid," '{print v_testid,$0}' $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
-	
+    if [ ! -z "$DB_HOST" ] ; then
+        awk -v v_testid="$newTestid," '{print v_testid,$0}' $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
+	else
+        mv $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
+    fi
+    
 	# Remove blank lines
 	sed '/^$/d' $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl >> $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
 
