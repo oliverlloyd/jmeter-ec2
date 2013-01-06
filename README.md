@@ -112,12 +112,25 @@ Where 'someproject' is the name of the project directory (and jmx file) and '1' 
 
 
 ## Notes:
+### Your PEM File
+Your .pem files need to be secure. Use 'chmod 600'. If not you may get the following error from scp "copying install.sh to 1 server(s)...lost connection".
+
+### AWS Key Pairs
+To find your key pairs goto your ec2 dashboard -> Networking and Security -> Key Pairs. Make sure this key pair is in the REGION you also set in the properties file.
+
+### AWS Security Groups
+To create or check your EC2 security groups goto your ec2 dashboard -> security groups.
+
+Create a security group (e.g. called jmeter) that allows inbound access on port 22 from the IP of the machine where you are running the script.
+
+### Using AWS
 It is not uncommon for an instance to fail to start, this is part of using the Cloud and for that reason this script will dynamically respond to this event by adjusting the number of instances that are used for the test. For example, if you request 10 instances but 1 fails then the test will be run using only 9 machines. This should not be a problem as the load will still be evenly spread and the end results (the throughput) identical. In a similar fashion, should Amazon not provide all the instances you asked for (each account is limited) then the script will also adjust to this scenario.
-    
+
+### Using Jmeter
 Any testplan should always have suitable pacing to regulate throughput. This script distributes load based on threads, it is assumed that these threads are setup with suitable timers. If not, adding more hardware could create unpredictable results.
 
 
-
+## License
 JMeter-ec2 is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
