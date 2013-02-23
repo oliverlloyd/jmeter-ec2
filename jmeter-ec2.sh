@@ -218,7 +218,7 @@ function runsetup() {
         if [ ! -z "$ELASTIC_IPS" ] ; then # Not Null - same as -n
             echo "assigning elastic ips..."
             for x in "${!instanceids[@]}" ; do
-                (ec2-associate-address ${elasticips[x]} -i ${instanceids[x]})
+                (ec2-associate-address --region $REGION -i ${instanceids[x]} ${elasticips[x]})
                 hosts[x]=${elasticips[x]}
             done
 			wait
