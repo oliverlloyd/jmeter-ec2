@@ -308,8 +308,8 @@ function runsetup() {
     fi
 	
     # scp install.sh
-    if [ "$setup" == "TRUE" ] ; then
-    	echo "copying install.sh to $instance_count server(s)..."
+    if [ "$setup" = "TRUE" ] ; then
+    	echo -n "copying install.sh to $instance_count server(s)..."
 	    for host in ${hosts[@]} ; do
 	        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
 	                                      -i $PEM_PATH/$PEM_FILE \
@@ -507,7 +507,7 @@ function runsetup() {
     echo -n "done...."
     
     # scp data dir
-    if [ "$setup" == "TRUE" ] ; then
+    if [ "$setup" = "TRUE" ] ; then
     	if [ -r $LOCAL_HOME/$project/data ] ; then # don't try to upload this optional dir if it is not present
 	        echo -n "data dir.."
 	        for host in ${hosts[@]} ; do
