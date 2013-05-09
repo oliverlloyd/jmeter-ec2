@@ -1020,6 +1020,7 @@ function control_c(){
 # trap keyboard interrupt (control-c)
 trap control_c SIGINT
 
+check_prereqs
 runsetup
 runtest
 runcleanup
