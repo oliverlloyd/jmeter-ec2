@@ -116,7 +116,7 @@ function check_prereqs() {
 	fi
 }
 
-function setupandrun() {
+function runsetup() {
     # if REMOTE_HOSTS is not set then no hosts have been specified to run the test on so we will request them from Amazon
     if [ -z "$REMOTE_HOSTS" ] ; then
         
