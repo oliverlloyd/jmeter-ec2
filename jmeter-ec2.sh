@@ -57,6 +57,7 @@ if [ -z "$setup" ] ; then setup="TRUE" ; fi
 if [ -z "$terminate" ] ; then terminate="TRUE" ; fi
 	
 # move count to instance_count
+if [ -z "$count" ] ; then count=1 ; fi
 instance_count=$count
 
 # Execute the jmeter-ec2.properties file, establishing these constants.
@@ -77,7 +78,45 @@ if [ ! -d "$LOCAL_HOME/$project" ] ; then
     exit
 fi
 
-function runsetup() {
+# do some basic checks to prevent problems later 
+function check_prereqs() {
+	# If there is a custom jmeter.properties, check for:
+	# - jmeter.save.saveservice.output_format=csv
+	# - jmeter.save.saveservice.thread_counts=true
+	if [ -r $LOCAL_HOME/jmeter.properties ] ; then 
+	    has_csv_output=$(grep -c "^\s*jmeter.save.saveservice.output_format=csv"  $LOCAL_HOME/jmeter.properties)
+	    has_thread_counts=$(grep -c "^\s*jmeter.save.saveservice.thread_counts=true" $LOCAL_HOME/jmeter.properties)
+	    if [ $has_csv_output -eq "0" ] ; then
+		echo "WARN: Please ensure the jmeter.properties file has 'jmeter.save.saveservice.output_format=csv'. Could not find it!"
+	    fi
+	    if [ $has_thread_counts -eq "0" ] ; then
+		echo "WARN: Please ensure the jmeter.properties file has 'jmeter.save.saveservice.thread_counts=true'. Could not find it!"
+	    fi
+	else
+	    echo "WARN: Did not see a custom jmeter.properties file. Please ensure the remote hosts have the required settings 'jmeter.save.saveservice.output_format=csv' and 'jmeter.save.saveservice.thread_counts=true'"
+	fi
+
+	# Check that the test plan exists
+	if [ -f "$LOCAL_HOME/$project/jmx/$project.jmx" ] ; then
+	    # Check that the jmx plan has a Generate Summary Reults listener (testclass="Summariser")
+	    summariser_count=$(grep -c "<Summariser .*testclass=\"Summariser\"" $LOCAL_HOME/$project/jmx/$project.jmx)
+	    if [ -z $summariser_count ] ; then summariser_count=0 ; fi ;
+	    if [ $summariser_count -eq "0" ] ; then
+	    	echo "ERROR: Please ensure your JMeter test plan has a Generate Summary Results listener! It is needed for jmeter-ec2 to properly work!"
+	    fi
+	else
+	    echo "ERROR: Could not find test plan at the following location: $LOCAL_HOME/$project/jmx/$project.jmx"
+	    exit
+	fi
+	
+	# Check that the AMI tools are installed and accessible
+	if  ! type ec2-describe-instances &>/dev/null  ; then 
+	    echo "ERROR: The AMI tools do not appear to be installed or accessible from command line (tried ec2-describe-instances)."
+	    exit
+	fi
+}
+
+function setupandrun() {
     # if REMOTE_HOSTS is not set then no hosts have been specified to run the test on so we will request them from Amazon
     if [ -z "$REMOTE_HOSTS" ] ; then
         
@@ -269,8 +308,8 @@ function runsetup() {
     fi
 	
     # scp install.sh
-    if [ "$setup" = "TRUE" ] ; then
-    	echo -n "copying install.sh to $instance_count server(s)..."
+    if [ "$setup" == "TRUE" ] ; then
+    	echo "copying install.sh to $instance_count server(s)..."
 	    for host in ${hosts[@]} ; do
 	        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
 	                                      -i $PEM_PATH/$PEM_FILE \
@@ -468,7 +507,7 @@ function runsetup() {
     echo -n "done...."
     
     # scp data dir
-    if [ "$setup" = "TRUE" ] ; then
+    if [ "$setup" == "TRUE" ] ; then
     	if [ -r $LOCAL_HOME/$project/data ] ; then # don't try to upload this optional dir if it is not present
 	        echo -n "data dir.."
 	        for host in ${hosts[@]} ; do
@@ -810,10 +849,10 @@ function runcleanup() {
 	fi
 	
 	# Tidy up
-    rm $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl
-    rm $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl
-    rm $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl
-    rm $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl
+    if [ -e "$LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl" ] ; then rm $LOCAL_HOME/$project/$project-$DATETIME-grouped.jtl ; fi
+    if [ -e "$LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl" ] ; then rm $LOCAL_HOME/$project/$project-$DATETIME-sorted.jtl ; fi
+    if [ -e "$LOCAL_HOME/$project/$project-$DATETIME-appended.jtl" ] ; then rm $LOCAL_HOME/$project/$project-$DATETIME-appended.jtl ; fi
+    if [ -e "$LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl" ] ; then rm $LOCAL_HOME/$project/$project-$DATETIME-noblanks.jtl ; fi
     mkdir -p $LOCAL_HOME/$project/results/
     mv $LOCAL_HOME/$project/$project-$DATETIME-complete.jtl $LOCAL_HOME/$project/results/
 	
@@ -879,8 +918,8 @@ function runcleanup() {
     
     # tidy up working files
     # for debugging purposes you could comment out these lines
-    rm $LOCAL_HOME/$project/$DATETIME*.out
-    rm $LOCAL_HOME/$project/working*
+    if [ stat --printf='' $LOCAL_HOME/$project/$DATETIME*.out 2>/dev/null ] ; then rm $LOCAL_HOME/$project/$DATETIME*.out ; fi
+    if [ stat --printf='' $LOCAL_HOME/$project/working* 2>/dev/null ] ; then rm $LOCAL_HOME/$project/working* ; fi
 
 
     echo
