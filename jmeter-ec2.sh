@@ -229,7 +229,7 @@ function runsetup() {
             for x in "${!instanceids[@]}" ; do
 				# check for ssh connectivity on the new address
 	            while ssh -o StrictHostKeyChecking=no -q -i $PEM_PATH/$PEM_FILE \
-	                $USER@${hosts[x]} true && test; \
+	                $USER@${hosts[x]} -p $REMOTE_PORT true && test; \
 	                do echo -n .; sleep 1; done
 	            # Note. If any IP is already in use on an instance that is still running then the ssh check above will return
 	            # a false positive. If this scenario is common you should put a sleep statement here.
@@ -260,6 +260,7 @@ function runsetup() {
 	            -o "BatchMode=yes" \
 	            -o "ConnectTimeout 15" \
 	            -i $PEM_PATH/$PEM_FILE \
+	            -p $REMOTE_PORT \
 	            $USER@$host echo up 2>&1)" == "up" ] ; then
 	            echo "Host $host is not responding, script exiting..."
 	            echo
@@ -274,6 +275,7 @@ function runsetup() {
 	    for host in ${hosts[@]} ; do
 	        (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
 	                                      -i $PEM_PATH/$PEM_FILE \
+	                                      -P $REMOTE_PORT \
 	                                      $LOCAL_HOME/install.sh \
 					      $LOCAL_HOME/jmeter-ec2.properties \
 	                                      $USER@$host:$REMOTE_HOME \
@@ -296,7 +298,7 @@ function runsetup() {
 	    echo "running install.sh on $instance_count server(s)..."
 	    for host in ${hosts[@]} ; do
 	        (ssh -nq -o StrictHostKeyChecking=no \
-	            -i $PEM_PATH/$PEM_FILE $USER@$host \
+	            -i $PEM_PATH/$PEM_FILE $USER@$host -p $REMOTE_PORT \
 	            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION"\
 	            > $LOCAL_HOME/$project/$DATETIME-$host-install.out) &
 	    done
@@ -460,7 +462,7 @@ function runsetup() {
     echo -n "jmx files.."
     for y in "${!hosts[@]}" ; do
         (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-                                      -i $PEM_PATH/$PEM_FILE \
+                                      -i $PEM_PATH/$PEM_FILE -P $REMOTE_PORT \
                                       $LOCAL_HOME/$project/working_$y \
                                       $USER@${hosts[$y]}:$REMOTE_HOME/execute.jmx) &
     done
@@ -473,7 +475,7 @@ function runsetup() {
 	        echo -n "data dir.."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          -i $PEM_PATH/$PEM_FILE -P $REMOTE_PORT \
 	                                          $LOCAL_HOME/$project/data \
 	                                          $USER@$host:$REMOTE_HOME/) &
 	        done
@@ -486,7 +488,7 @@ function runsetup() {
 	        echo -n "jmeter.properties.."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          -i $PEM_PATH/$PEM_FILE -P $REMOTE_PORT \
 	                                          $LOCAL_HOME/jmeter.properties \
 	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
 	        done
@@ -499,7 +501,7 @@ function runsetup() {
 	        echo -n "jmeter execution file..."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          -i $PEM_PATH/$PEM_FILE -P $REMOTE_PORT \
 	                                          $LOCAL_HOME/jmeter $LOCAL_HOME/jmeter \
 	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
 	        done
@@ -512,7 +514,7 @@ function runsetup() {
 	        echo -n "custom jar file(s)..."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          -i $PEM_PATH/$PEM_FILE -P $REMOTE_PORT \
 	                                          $LOCAL_HOME/plugins/*.jar \
 	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
 	        done
@@ -525,7 +527,7 @@ function runsetup() {
 	        echo -n "project specific jar file(s)..."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                          -i $PEM_PATH/$PEM_FILE \
+	                                          -i $PEM_PATH/$PEM_FILE -P $REMOTE_PORT \
 	                                          $LOCAL_HOME/$project/plugins/*.jar \
 	                                          $USER@$host:$REMOTE_HOME/$JMETER_VERSION/lib/ext/) &
 	        done
@@ -537,14 +539,14 @@ function runsetup() {
 			# upload import-results.sh
 		    echo -n "copying import-results.sh to database..."
 		    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-		                                  -i $DB_PEM_PATH/$DB_PEM_FILE \
+		                                  -i $DB_PEM_PATH/$DB_PEM_FILE -P $DB_SSH_PORT \
 		                                  $LOCAL_HOME/import-results.sh \
 		                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
 			wait
 		
 			# set permissions
 		    (ssh -n -o StrictHostKeyChecking=no \
-		        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
+		        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
 				"chmod 755 $REMOTE_HOME/import-results.sh")
 			wait
 			echo -n "done...."
@@ -582,6 +584,7 @@ function runsetup() {
     #
     for counter in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
+        -p $REMOTE_PORT \
         -i $PEM_PATH/$PEM_FILE $USER@${hosts[$counter]} \
         $REMOTE_HOME/$JMETER_VERSION/bin/jmeter.sh -n \
         -t $REMOTE_HOME/execute.jmx \
@@ -750,7 +753,8 @@ function runcleanup() {
         scp -q -C -o UserKnownHostsFile=/dev/null \
                                      -o StrictHostKeyChecking=no \
                                      -i $PEM_PATH/$PEM_FILE \
-                                     $USER@${hosts[$i]}:$REMOTE_HOME/$project-$DATETIME-$i.jtl \
+                                     -P $REMOTE_PORT \
+                                     $USER@${hosts[$i]}:$REMOTE_HOME/$project-*.jtl \
                                      $LOCAL_HOME/$project/
         echo "$LOCAL_HOME/$project/$project-$DATETIME-$i.jtl complete"
     done
@@ -823,7 +827,7 @@ function runcleanup() {
 	if [ ! -z "$DB_HOST" ] ; then
 	    echo -n "copying import-results.sh to database..."
 	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                  -i $DB_PEM_PATH/$DB_PEM_FILE \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE -P $DB_SSH_PORT \
 	                                  $LOCAL_HOME/import-results.sh \
 	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
 		wait
@@ -832,7 +836,7 @@ function runcleanup() {
 	    # scp results to remote db
 	    echo -n "uploading jtl file to database.."
 	    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-	                                  -i $DB_PEM_PATH/$DB_PEM_FILE \
+	                                  -i $DB_PEM_PATH/$DB_PEM_FILE -P $DB_SSH_PORT \
 	                                  $LOCAL_HOME/$project/results/$project-$DATETIME-complete.jtl \
 	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
 	    wait
@@ -840,13 +844,13 @@ function runcleanup() {
 
 		# set permissions
 	    (ssh -n -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
 			"chmod 755 $REMOTE_HOME/import-results.sh")
 
 	    # Import jtl to database...
 	    echo -n "importing jtl file..."
 	    (ssh -nq -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
 	        "$REMOTE_HOME/import-results.sh \
 						'localhost' \
 						'$DB_NAME' \
@@ -900,7 +904,7 @@ function updateTest() {
 		#echo "sqlstmt = '"$1"'"
 		#echo "sqlstr = '"$sqlstr"'"
 		sqlresult=$(ssh -nq -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST \
+	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
 			"$sqlstr -e '$1'")
 			
 		#echo "sqlresult = '"$sqlresult"'"
@@ -968,7 +972,7 @@ function control_c(){
     echo "> Stopping test..."
     for f in ${!hosts[@]} ; do
         ( ssh -nq -o StrictHostKeyChecking=no \
-        -i $PEM_PATH/$PEM_FILE $USER@${hosts[$f]} \
+        -i $PEM_PATH/$PEM_FILE $USER@${hosts[$f]} -p $REMOTE_PORT \
         $REMOTE_HOME/$JMETER_VERSION/bin/stoptest.sh ) &
     done
     wait

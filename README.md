@@ -92,6 +92,9 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 	`REMOTE_HOSTS=""`
 	If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
 
+	`REMOTE_PORT=""`
+	Specify the port sshd is running on for `REMOTE_HOSTS` or ec2. Default 22.
+
 	`ELASTIC_IPS=""`
 	If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
 
