@@ -92,6 +92,9 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 	`REMOTE_HOSTS=""`
 	If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
 
+	`REMOTE_PORT=""`
+	Specify the port sshd is running on for `REMOTE_HOSTS` or ec2. Default 22.
+
 	`ELASTIC_IPS=""`
 	If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
 
@@ -110,6 +113,27 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 
 Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
 
+## Running locally with Vagrant
+[Vagrant](http://vagrantup.com) allows you to test your jmeter-ec2 scripts locally before pushing them to ec2.
+
+### Pre-requisits
+* [Vagrant](http://vagrantup.com)
+
+### Usage:
+Use `jmeter-ec2.properties.vagrant` as a template for local provisioning. This file is setup to use Vagrants ssh key, ports, etc.
+```
+# backup your properties files just in case
+cp jmeter-ec2.properties jmeter-ec2.properties.bak
+# use the vagrant properties file
+cp jmeter-ec2.properties.vagrant jmeter-ec2.properties
+# start vm and provision defaultjre
+vagrant up
+# run your project
+project="myproject" setup="TRUE" ./jmeter-ec2.sh
+```
+
+### Note
+* You may need to edit the `Vagrantfile` to meet any specific networking needs. See Vagrant's [networking documentation](http://docs.vagrantup.com/v2/getting-started/networking.html) for details
 
 ## Notes:
 ### Your PEM File
