@@ -187,7 +187,7 @@ function runsetup() {
             echo -n .
             status_check_count=$(( $status_check_count + 1))
             count_passed=$(ec2-describe-instance-status --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
-            sleep 1
+            sleep 3
         done
         
         if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==instance_count
