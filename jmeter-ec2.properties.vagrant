@@ -1,6 +1,8 @@
+# #!/bin/bash
+
 # This is a java stye properties file for the jmeter-ec2 shell script
 #
-# It is treated like a normal shell script and must have executable permissions
+# It is treated like a normal shell script
 #
 # See README.txt for more details about each property
 #
@@ -11,7 +13,7 @@ PEM_PATH="$HOME/.vagrant.d"               # The path to your pem file
 USER="vagrant"                               # Should match the AMI
 REMOTE_PORT="2222"                            # The port number sshd is running on,
 JMETER_VERSION="apache-jmeter-2.7"          # The version of JMeter to be used. Must be the full name used in the dir structure. Does not work for versions prior to 2.5.1.
-JAVA_VERSION_32='jre-6u32-linux-i586.bin'   # Specify the JAVA binary you will be using in the case of 32Bit. 
+JAVA_VERSION_32='jre-6u32-linux-i586.bin'   # Specify the JAVA binary you will be using in the case of 32Bit.
 JAVA_VERSION_64='jre-6u32-linux-x64.bin'    # Specify the JAVA binary you will be using in the case of 64Bit.
 
 # REMOTE_HOSTS
@@ -25,5 +27,5 @@ DB_NAME=""
 DB_USER=""
 DB_PSWD=""
 DB_PEM_FILE=""
-DB_PEM_PATH="" 
+DB_PEM_PATH=""
 DB_PEM_USER=""
