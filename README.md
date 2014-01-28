@@ -12,9 +12,8 @@ Further details and idiot-level step by step instructions:
     [http://www.http503.com/2012/jmeter-ec2/](http://www.http503.com/2012/jmeter-ec2/)
 
 ## Usage:
-    project="abc" percent=20 count="3" terminate="TRUE" setup="TRUE" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
+    percent=20 count="3" terminate="TRUE" setup="TRUE" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 
-    [project]         -	required, directory and jmx name
     [count]           -	optional, default=1 
     [percent]         -	optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
     [setup]           -	optional, default=TRUE. Set to "FALSE" if a pre-defined host is being used that has already been setup (had files copied to it, jmeter installed, etc.)
@@ -53,17 +52,14 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 
 
 ## Execution Instructions (for UNIX based OSs)
-1. Create a project directory on your machine. For example: `/home/username/jmeter-ec2/`. This is the working dir for the script.
+1. Create a project directory on your machine. For example: `/home/username/myproject/`.
 
-2. Download all files from [https://github.com/oliverlloyd/jmeter-ec2](https://github.com/oliverlloyd/jmeter-ec2) and place them in the root directory created above and then extract the file example-project.zip to give a template directory structure for your project.
+2. Download all files from [https://github.com/oliverlloyd/jmeter-ec2](https://github.com/oliverlloyd/jmeter-ec2) and place them in a suitable directory and then extract the file example-project.zip to give a template directory structure for your project.
 
 3. Edit the file jmeter-ec2.properties, each value listed below must be set:
 
-    `LOCAL_HOME="[Your local project directory, created above, eg. /home/username/jmeter-ec2]"`
-    The script needs to know a location remotely where it can read and write data from while it runs.
-    
-    `REMOTE_HOME="/tmp"` # This value can be left as the default unless you have a specific requirement to change it
-    This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
+  `REMOTE_HOME="/tmp"` # This value can be left as the default unless you have a specific requirement to change it
+  This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
 
 	`AMI_ID="[A linix based AMI, eg. ami-e1e8d395]"`
 	(only in ec2 mode) Recommended AMIs provided. Both Java and JMeter are installed by the script and are not required.
@@ -103,15 +99,15 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 
 	DATABASE SETTINGS - optional, this functionality is not currently documented.
 
-4. Copy your JMeter jmx file into the /jmx directory under your root project directory (LOCAL_HOME) and rename it to the same name as the directory. For example, if you created the directory `/testing/myproject` then you should name the jmx file `myproject.jmx` if you are using `LOCAL_HOME=/home/username/someproject` then the jmx file should be renamed to `someproject.jmx`
+4. Copy your JMeter jmx file into the /jmx directory under your root project directory (Ie. myproject) and rename it to the same name as the directory. For example, if you created the directory `/testing/myproject` then you should name the jmx file `myproject.jmx`.
 
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
 6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
 
-7. Type: `project="someproject"count="1" ./jmeter-ec2.sh`
+7. Type: `count="1" ./path/to/jmeter-ec2.sh`
 
-Where 'someproject' is the name of the project directory (and jmx file) and '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
+Where '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
 
 ## Running locally with Vagrant
 [Vagrant](http://vagrantup.com) allows you to test your jmeter-ec2 scripts locally before pushing them to ec2.
