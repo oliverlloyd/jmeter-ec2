@@ -12,6 +12,7 @@ PEM_FILE="insecure_private_key"                    # The full name of the pem fi
 PEM_PATH="$HOME/.vagrant.d"               # The path to your pem file
 USER="vagrant"                               # Should match the AMI
 REMOTE_PORT="2222"                            # The port number sshd is running on,
+RUNNINGTOTAL_INTERVAL="3"                   # How often the script prints running totals to the screen (n * summariser.interval seconds)
 JMETER_VERSION="apache-jmeter-2.7"          # The version of JMeter to be used. Must be the full name used in the dir structure. Does not work for versions prior to 2.5.1.
 JAVA_VERSION_32='jre-6u32-linux-i586.bin'   # Specify the JAVA binary you will be using in the case of 32Bit.
 JAVA_VERSION_64='jre-6u32-linux-x64.bin'    # Specify the JAVA binary you will be using in the case of 64Bit.
