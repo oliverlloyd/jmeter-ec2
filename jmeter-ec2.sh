@@ -552,8 +552,8 @@ function runsetup() {
 	        echo -n "done...."
 	    fi
 
-		# scp any custom jar files
-	    if [ -d $LOCAL_HOME/plugins ] && [ -n $(ls $LOCAL_HOME/plugins/) ] ; then # don't try to upload any files if none present
+	    # scp any custom jar files
+	    if [ -r $LOCAL_HOME/plugins ] ; then # don't try to upload this optional dir if it is not present
 	        echo -n "custom jar file(s)..."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
@@ -566,7 +566,7 @@ function runsetup() {
 	    fi
 
 	    # scp any project specific custom jar files
-	    if [ -d $project_home/plugins ] && [ -n $(ls $project_home/plugins/) ] ; then # don't try to upload any files if none present
+ 	    if [ -r $project_home/plugins ] ; then # don't try to upload this optional dir if it is not present
 	        echo -n "project specific jar file(s)..."
 	        for host in ${hosts[@]} ; do
 	            (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
