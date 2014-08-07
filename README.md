@@ -103,9 +103,11 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 
 5. Copy any data files that are required by your testplan to the /data sub directory.
 
-6. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
+6. Copy any jar files that are required by your testplan to the /plugins sub directory.
 
-7. Type: `count="1" ./path/to/jmeter-ec2.sh`
+7. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
+
+8. Type: `count="1" ./path/to/jmeter-ec2.sh`
 
 Where '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.
 
