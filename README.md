@@ -32,7 +32,7 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 * File paths cannot be dynamic, any variables in the filepath will be ignored.
 
 
-## Pre-requisits
+## Prerequisites
 * **An Amazon ec2 account is required** unless valid hosts are specified using REMOTE_HOSTS property.
 * Amazon API tools must be installed as per Amazon's instructions (only in ec2 mode).
 * Testplans should have a Generate Summary Results Listener present and enabled (no other listeners are required).
@@ -68,7 +68,7 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 	(only in ec2 mode) This depends on the type of AMI - it must be available for the AMI used.
 
 	`INSTANCE_SECURITYGROUP="jmeter"`
-	(only in ec2 mode) The name of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
+	(only in ec2 mode) The name or ID of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script. In order to use EC2-VPC, you must specify the ID of the security group.
 
 	`PEM_FILE="olloyd-eu"`
 	(only in ec2 mode) Your Amazon key file - obviously must be installed locally.
@@ -81,6 +81,9 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 
 	`USER="ubuntu"`
 	(only in ec2 mode) Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'ubuntu' etc.
+
+    `SUBNET_ID=""`
+    (only in ec2-vpc mode) The id of the subnet that the instance will belong to.
 
 	`RUNNINGTOTAL_INTERVAL="3"`
 	How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
