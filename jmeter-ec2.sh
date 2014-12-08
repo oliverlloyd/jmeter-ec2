@@ -151,6 +151,10 @@ function runsetup() {
         echo
         echo
 
+        vpcsettings=""
+
+        if [ -n "$SUBNET_ID" ] ; then vpcsettings="-s $SUBNET_ID --associate-public-ip-address \"true\""; fi
+
         # create the instance(s) and capture the instance id(s)
         echo -n "requesting $instance_count instance(s)..."
         attempted_instanceids=(`ec2-run-instances \
@@ -158,6 +162,7 @@ function runsetup() {
                     -t "$INSTANCE_TYPE" \
                     -g "$INSTANCE_SECURITYGROUP" \
                     -n 1-$instance_count \
+                    $vpcsettings \
 		            --region $REGION \
                     --availability-zone \
                     $INSTANCE_AVAILABILITYZONE $AMI_ID \
