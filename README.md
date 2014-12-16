@@ -151,6 +151,33 @@ Create a security group (e.g. called jmeter) that allows inbound access on port 
 ### Using AWS
 It is not uncommon for an instance to fail to start, this is part of using the Cloud and for that reason this script will dynamically respond to this event by adjusting the number of instances that are used for the test. For example, if you request 10 instances but 1 fails then the test will be run using only 9 machines. This should not be a problem as the load will still be evenly spread and the end results (the throughput) identical. In a similar fashion, should Amazon not provide all the instances you asked for (each account is limited) then the script will also adjust to this scenario.
 
+### Using spot instances
+
+By default this shell script uses on-demand instances. You can use spot instances by requesting an hourly price for your EC2 instances
+
+> Spot Instances allow you to name your own price for Amazon EC2 computing capacity. You simply bid on spare Amazon EC2
+> instances and run them whenever your bid exceeds the current Spot Price, which varies in real-time based on supply
+> and demand. The Spot Instance pricing model complements the On-Demand and Reserved Instance pricing models,
+> providing potentially the most cost-effective option for obtaining compute capacity, depending on your application.
+
+Read more at http://aws.amazon.com/ec2/purchasing-options/spot-instances/
+
+Usage:
+    count="3" price=0.0035  ./jmeter-ec2.sh'
+
+    [price]           - optional, if specified spot instances will be requested at this price
+    [count]           - optional, default=1
+
+
+Note that if your price is too low spot requests will fail with a status ``` price-too-low ```.
+
+To get the price history by instance type, use the ```ec2-describe-spot-price-history``` command from [AWS CLI](http://aws.amazon.com/cli/) :
+
+For example to get current price for t1.micro instance running Linux :
+
+```ec2-describe-spot-price-history -H --instance-type t1.micro -d Linux/UNIX -s `date +"%Y-%m-%dT%H:%M:%SZ"````
+
+
 ### Using Jmeter
 Any testplan should always have suitable pacing to regulate throughput. This script distributes load based on threads, it is assumed that these threads are setup with suitable timers. If not, adding more hardware could create unpredictable results.
 
