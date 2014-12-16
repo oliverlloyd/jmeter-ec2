@@ -37,6 +37,7 @@ if [ "$1" == "-h" ] ; then
 	echo "[env]             -	optional"
 	echo "[release]         -	optional"
 	echo "[comment]         -	optional"
+       echo "[price]           -   optional"
 	echo
 	exit
 fi
@@ -158,17 +159,94 @@ function runsetup() {
         if [ -n "$SUBNET_ID" ] ; then vpcsettings="-s $SUBNET_ID --associate-public-ip-address \"true\""; fi
 
         # create the instance(s) and capture the instance id(s)
-        echo -n "requesting $instance_count instance(s)..."
-        attempted_instanceids=(`ec2-run-instances \
-		            --key "$AMAZON_KEYPAIR_NAME" \
-                    -t "$INSTANCE_TYPE" \
-                    -g "$INSTANCE_SECURITYGROUP" \
-                    -n 1-$instance_count \
-                    $vpcsettings \
-		            --region $REGION \
-                    --availability-zone \
-                    $INSTANCE_AVAILABILITYZONE $AMI_ID \
-                    | awk '/^INSTANCE/ {print $2}'`)
+        if [ -z "$price" ] ; then
+          echo "No Price specified. Using on-demand instances..."
+          echo -n "Requesting $instance_count instance(s)..."
+          attempted_instanceids=(`ec2-run-instances \
+                          --key "$AMAZON_KEYPAIR_NAME" \
+                      -t "$INSTANCE_TYPE" \
+                      -g "$INSTANCE_SECURITYGROUP" \
+                      -n 1-$instance_count \
+                      $vpcsettings \
+                          --region $REGION \
+                      --availability-zone \
+                      $INSTANCE_AVAILABILITYZONE $AMI_ID \
+                      | awk '/^INSTANCE/ {print $2}'`)
+        else
+          echo "Using Spot instances..."
+          # create the spot instance request(s) and capture the request id(s)
+          echo "Requesting $instance_count instance(s)..."
+          spot_instance_request_id=(`ec2-request-spot-instances -p $price \
+                  --key $AMAZON_KEYPAIR_NAME \
+                      -t $INSTANCE_TYPE \
+                      -g $INSTANCE_SECURITYGROUP \
+                      -n $instance_count \
+                      $vpcsettings \
+                  --region $REGION \
+                      --availability-zone \
+                      $INSTANCE_AVAILABILITYZONE $AMI_ID \
+                      | awk '/^SPOTINSTANCEREQUEST/ {print $2}'`)
+          echo "Spot Instance request submitted, number of requests is: ${#spot_instance_request_id[@]}"
+
+          status_check_count=0
+          status_check_limit=60
+          spot_request_fulfilled_count=0
+          spot_request_error_count=0
+          echo "Waiting for Spot instance requests to fulfill (may take a few minutes)"
+          while [ "$spot_request_fulfilled_count" -ne "$instance_count" ] && [ $status_check_count -lt $status_check_limit ]
+          do
+            spot_request_statuses=(`ec2-describe-spot-instance-requests ${spot_instance_request_id[@]} | awk '/^SPOTINSTANCESTATUS/ {print $2}'`)
+            spot_request_fulfilled_count=$(echo ${spot_request_statuses[@]} | tr ' ' '\n' | grep -c fulfilled)
+
+            # if all spot requests failed exit before status_check_limit is reached
+            spot_request_errors=(capacity-not-available capacity-oversubscribed price-too-low)
+            for x in "${spot_request_statuses[@]}" ; do
+              for i in "${spot_request_errors[@]}"; do
+                if [[ "$i" = "$x" ]]; then
+                  spot_request_error_count=$(( $spot_request_error_count + 1))
+                  break
+                fi
+              done
+            done
+
+            if [[ "$spot_request_error_count" = "${#spot_instance_request_id[@]}" ]]; then
+              echo
+              echo "All Spot requests failed, exiting. Statuses where :"
+              for x in "${spot_request_statuses[@]}" ; do
+                echo " $x"
+              done
+              exit
+            fi
+
+            echo -n "."
+            status_check_count=$(( $status_check_count + 1))
+            sleep 5
+          done
+
+          # create a filter for the ec2-describe-instance command, to get the instances associated with the spot requests
+          spot_id_filter=""
+          for x in "${spot_instance_request_id[@]}" ; do
+            spot_id_filter="$spot_id_filter -filter \"spot-instance-request-id=$x\""
+          done
+          echo "Will be using this Spot ID filter to find new instances: $spot_id_filter"
+
+          # Instances might not be found immediatly, wait a few seconds if necessary
+          status_check_count=0
+          status_check_limit=60
+          instances_ready=false
+          while true; do
+            instance_describe=`ec2-describe-instances $spot_id_filter`
+            if [[ $instance_describe != *"Client.InvalidInstanceID.NotFound"* ]]; then
+              instances_ready=true
+            fi
+            status_check_count=$(( $status_check_count + 1))
+            echo "."
+            if [ $instances_ready = true ] || [ $status_check_count -gt $status_check_limit ]; then
+              break
+            fi
+          done
+          attempted_instanceids=(`ec2-describe-instances $spot_id_filter | awk '/^INSTANCE/ {print $2}'`)
+        fi
 
         # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
         # less than the expected number is given wthout failing the test.
