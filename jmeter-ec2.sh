@@ -37,7 +37,7 @@ if [ "$1" == "-h" ] ; then
 	echo "[env]             -	optional"
 	echo "[release]         -	optional"
 	echo "[comment]         -	optional"
-       echo "[price]           -   optional"
+  echo "[price]           - optional"
 	echo
 	exit
 fi
