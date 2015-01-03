@@ -195,7 +195,7 @@ function runsetup() {
           echo "Waiting for Spot instance requests to fulfill (may take a few minutes)"
           while [ "$spot_request_fulfilled_count" -ne "$instance_count" ] && [ $status_check_count -lt $status_check_limit ]
           do
-            spot_request_statuses=(`ec2-describe-spot-instance-requests ${spot_instance_request_id[@]} | awk '/^SPOTINSTANCESTATUS/ {print $2}'`)
+            spot_request_statuses=(`ec2-describe-spot-instance-requests --region $REGION ${spot_instance_request_id[@]} | awk '/^SPOTINSTANCESTATUS/ {print $2}'`)
             spot_request_fulfilled_count=$(echo ${spot_request_statuses[@]} | tr ' ' '\n' | grep -c fulfilled)
 
             # if all spot requests failed exit before status_check_limit is reached
@@ -215,6 +215,7 @@ function runsetup() {
               for x in "${spot_request_statuses[@]}" ; do
                 echo " $x"
               done
+              ec2-cancel-spot-instance-requests $(printf " %s" "${spot_instance_request_id[@]}") --region $REGION
               exit
             fi
 
@@ -235,7 +236,7 @@ function runsetup() {
           status_check_limit=60
           instances_ready=false
           while true; do
-            instance_describe=`ec2-describe-instances $spot_id_filter`
+            instance_describe=`ec2-describe-instances $spot_id_filter --region $REGION`
             if [[ $instance_describe != *"Client.InvalidInstanceID.NotFound"* ]]; then
               instances_ready=true
             fi
@@ -245,7 +246,7 @@ function runsetup() {
               break
             fi
           done
-          attempted_instanceids=(`ec2-describe-instances $spot_id_filter | awk '/^INSTANCE/ {print $2}'`)
+          attempted_instanceids=(`ec2-describe-instances $spot_id_filter --region $REGION | awk '/^INSTANCE/ {print $2}'`)
         fi
 
         # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
