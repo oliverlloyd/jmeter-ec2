@@ -211,7 +211,7 @@ function runsetup() {
 
             if [[ "$spot_request_error_count" = "${#spot_instance_request_id[@]}" ]]; then
               echo
-              echo "All Spot requests failed, exiting. Statuses where :"
+              echo "All Spot requests failed, exiting. Statuses were:"
               for x in "${spot_request_statuses[@]}" ; do
                 echo " $x"
               done
