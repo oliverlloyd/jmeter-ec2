@@ -12,12 +12,12 @@ JMETER_VERSION=$3
 
 
 function install_jmeter_plugins() {
-    wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
+    wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2-downloads/JMeterPlugins.jar
     mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/$JMETER_VERSION/lib/ext/
 }
 
 function install_mysql_driver() {
-    wget -q -O $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar https://s3.amazonaws.com/jmeter-ec2/mysql-connector-java-5.1.16-bin.jar
+    wget -q -O $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar https://s3.amazonaws.com/jmeter-ec2-downloads/mysql-connector-java-5.1.16-bin.jar
     mv $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar $REMOTE_HOME/$JMETER_VERSION/lib/
 }
 
@@ -34,11 +34,11 @@ if [ $INSTALL_JAVA -eq 1 ] ; then
 
 #    bits=`getconf LONG_BIT`
 #    if [ $bits -eq 32 ] ; then
-#        wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin
+#        wget -q -O $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin https://s3.amazonaws.com/jmeter-ec2-downloads/jre-6u30-linux-i586-rpm.bin
 #        chmod 755 $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin
 #        $REMOTE_HOME/jre-6u30-linux-i586-rpm.bin
 #    else # 64 bit
-#        wget -q -O $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin https://s3.amazonaws.com/jmeter-ec2/jre-6u30-linux-i586-rpm.bin
+#        wget -q -O $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin https://s3.amazonaws.com/jmeter-ec2-downloads/jre-6u30-linux-i586-rpm.bin
 #        chmod 755 $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
 #        $REMOTE_HOME/jre-6u30-linux-x64-rpm.bin
 #    fi
