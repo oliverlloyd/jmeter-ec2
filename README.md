@@ -9,7 +9,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 
 
 Further details and idiot-level step by step instructions:
-    [http://www.http503.com/2012/jmeter-ec2/](http://www.http503.com/2012/jmeter-ec2/)
+    [Archived here](http://web.archive.org/web/20120209090437/http://www.http503.com/2012/jmeter-ec2/)
 
 ## Usage:
     percent=20 count="3" terminate="TRUE" setup="TRUE" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
