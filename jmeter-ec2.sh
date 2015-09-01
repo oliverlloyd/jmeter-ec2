@@ -930,8 +930,8 @@ function runcleanup() {
 	sed '/^0,0,Error:/d' $project_home/$project-$DATETIME-noblanks.jtl >> $project_home/$project-$DATETIME-complete.jtl
 
 	# Calclulate test duration
-	start_time=$(head -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f2)
-	end_time=$(tail -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f2)
+	start_time=$(head -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
+	end_time=$(tail -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
 	duration=$(echo "$end_time-$start_time" | bc)
 	if [ ! $duration > 0 ] ; then
 		duration=0;
