@@ -390,7 +390,7 @@ function runsetup() {
 	            -o "ConnectTimeout=15" \
 	            -i "$PEM_PATH/$PEM_FILE" \
 	            -p $REMOTE_PORT \
-	            $USER@$host echo up 2>&1)" == "up" ] ; then
+	            $USER@$host echo up)" == "up" ] ; then
 	            echo "Host $host is not responding, script exiting..."
 	            echo
 	            exit
