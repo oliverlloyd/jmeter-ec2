@@ -384,7 +384,7 @@ function runsetup() {
 
 	    # Check if remote hosts are up
 	    for host in ${hosts[@]} ; do
-	        if [ ! "$(ssh -q -q \
+	        if [ ! "$(ssh -q \
 	            -o StrictHostKeyChecking=no \
 	            -o "BatchMode=yes" \
 	            -o "ConnectTimeout 15" \
