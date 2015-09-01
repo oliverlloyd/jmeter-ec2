@@ -387,7 +387,7 @@ function runsetup() {
 	        if [ ! "$(ssh -q \
 	            -o StrictHostKeyChecking=no \
 	            -o "BatchMode=yes" \
-	            -o "ConnectTimeout 15" \
+	            -o "ConnectTimeout=15" \
 	            -i "$PEM_PATH/$PEM_FILE" \
 	            -p $REMOTE_PORT \
 	            $USER@$host echo up 2>&1)" == "up" ] ; then
