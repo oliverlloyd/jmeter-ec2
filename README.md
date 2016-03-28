@@ -10,7 +10,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 ### Prerequisites
 * An Amazon ec2 account is required (unless valid hosts are specified using REMOTE_HOSTS property).
 * Amazon [EC2 Tools](http://aws.amazon.com/developertools/351/) must be [installed](http://www.robertsosinski.com/2008/01/26/starting-amazon-ec2-with-mac-os-x/).
-* Testplans should contain a [Generate Summary Results Listener](https://jmeter.apache.org/usermanual/component_reference.html#Generate_Summary_Results). No other listeners are required.
+* For versions of JMeter older than 2.11, testplans should contain a [Generate Summary Results Listener](https://jmeter.apache.org/usermanual/component_reference.html#Generate_Summary_Results). No other listeners are required.
 
 ###Setup
  1. Create a project directory on your machine. For example: `~/Documents/WHERETOPUTMYSTUFF/`. This is where you store your testplan and any associated files.
