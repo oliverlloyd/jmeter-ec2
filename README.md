@@ -32,7 +32,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
  7. Copy any jar files that are required by your testplan to the /plugins sub directory.
  8. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
  9. Type: `count="1" ./path/to/jmeter-ec2.sh`
- Where '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using REMOTE_HOSTS then this value is ignored and all hosts in the list will be used.*emphasized text*
+ Where '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using `REMOTE_HOSTS` then this value is ignored and all hosts in the list will be used.
 
 
 ###Advanced Usage
