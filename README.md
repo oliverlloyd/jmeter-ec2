@@ -46,8 +46,8 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
 #### Example environment Vars | `vi ~/.bash_profile`
     export EC2_HOME=~/.ec2
     export PATH=$PATH:$EC2_HOME/bin
-    export EC2_PRIVATE_KEY=`ls $EC2_HOME/jmeter_key.pem`
-    export EC2_CERT=`ls $EC2_HOME/jmeter_cert.pem`
+    export AWS_ACCESS_KEY=[See documentation at http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html]
+    export AWS_SECRET_KEY=[See documentation at http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html]
     export JAVA_HOME=/System/Library/Frameworks/JavaVM.framework/Home/
     export EC2_URL=https://ec2.eu-west-1.amazonaws.com
 
@@ -62,10 +62,10 @@ IMPORTANT - There is a limit imposed by Amazon on how many instances can be run 
   `REMOTE_HOME="/tmp"` # This value can be left as the default unless you have a specific requirement to change it
   This is the location where the script will execute the test from - it is not important as it will only exist for the duration of the test.
 
-  `AMI_ID="[A linix based AMI, eg. ami-e1e8d395]"`
+  `AMI_ID="[A linix based AMI, eg. ami-5189a661]"`
   (only in ec2 mode) Recommended AMIs provided. Both Java and JMeter are installed by the script and are not required.
 
-  `INSTANCE_TYPE="t1.micro"`
+  `INSTANCE_TYPE="t2.micro"`
   (only in ec2 mode) This depends on the type of AMI - it must be available for the AMI used.
 
   `INSTANCE_SECURITYGROUP="jmeter"`
