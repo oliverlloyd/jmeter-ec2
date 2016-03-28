@@ -384,13 +384,13 @@ function runsetup() {
 
 	    # Check if remote hosts are up
 	    for host in ${hosts[@]} ; do
-	        if [ ! "$(ssh -q -q \
+	        if [ ! "$(ssh -q \
 	            -o StrictHostKeyChecking=no \
 	            -o "BatchMode=yes" \
-	            -o "ConnectTimeout 15" \
+	            -o "ConnectTimeout=15" \
 	            -i "$PEM_PATH/$PEM_FILE" \
 	            -p $REMOTE_PORT \
-	            $USER@$host echo up 2>&1)" == "up" ] ; then
+	            $USER@$host echo up)" == "up" ] ; then
 	            echo "Host $host is not responding, script exiting..."
 	            echo
 	            exit
@@ -930,10 +930,10 @@ function runcleanup() {
 	sed '/^0,0,Error:/d' $project_home/$project-$DATETIME-noblanks.jtl >> $project_home/$project-$DATETIME-complete.jtl
 
 	# Calclulate test duration
-	start_time=$(head -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f2)
-	end_time=$(tail -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f2)
+	start_time=$(head -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
+	end_time=$(tail -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
 	duration=$(echo "$end_time-$start_time" | bc)
-	if [ ! $duration > 0 ] ; then
+	if [ ! $duration -gt 0 ] ; then
 		duration=0;
 	fi
 
