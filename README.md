@@ -84,6 +84,52 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 * You cannot have jmeter variables in the testplan field `Thread Count`, this value must be numeric.
 * Testplan file paths cannot be dynamic, any jmeter variables in the filepath will be ignored.
 
+### Why am I seeing `copying install.sh to 1 server(s)...lost connection`?
+This happens when it is not possible for the script to connect over port 22 to the instance that was created by AWS. There are a number of reasons why this can happen.
+
+**First, can you telnet to the instance?**
+Run the script to create a box but use:
+
+`count="1" terminate="FALSE"./path/to/jmeter-ec2.sh`
+
+Then, take the hostname of the instance just created and try:
+
+`telnet thehostname.com 22`
+
+If you see something like:
+
+> Trying thehostname.com...
+Connected to thehostname.com
+Escape character is '^]'.
+SSH-2.0-OpenSSH_6.6p1 Ubuntu-2ubuntu1
+
+Then you **DO** have network access.
+
+If you see:
+
+> Trying 123.456.789.123...
+
+You **DO NOT** have network access.
+
+####Things to try if you **DO** have network access
+
+**File permissions on your PEM file**
+Your .pem files [need to be secure](http://stackoverflow.com/questions/1454629/aws-ssh-access-permission-denied-publickey-issue). Use `chmod 600 yourfile.pem`.
+
+**The `USER` property is not correct**
+Different AMIs and OSs expact you to log in using different users. Make sure this value is set correctly.
+
+**Install the latest version of the ec2-api-tools**
+Check [here](http://aws.amazon.com/developertools/351/) and make sure you have the latest version installed. Use `$ ec2-version` to check.
+
+####Things to try if you **DO NOT** have network access
+
+**Your Security Group is not configured properly**
+The `INSTANCE_SECURITYGROUP` property needs to reference the exact name of a security group that exists in the correct region and that contains a rule that allows inbound traffic on port 22 from the machine you are running the script from, or everywhere if you are running the script remotely or just want to rule this out (be sure to reduce this scope later once you've got things working)
+
+**Check local network settings**
+Often port 22 can be blocked by over-zealous local network security settings. You often see this with poor quality wifi services, the type where you have to fill out a marketing form to get access. You can sometimes get around this by using a vpn but often they block this too and then your only choice is to put down your flat white and leave.
+
 
 ## Spot instances
 
@@ -138,9 +184,6 @@ project="myproject" setup="TRUE" ./jmeter-ec2.sh
 * You may need to edit the `Vagrantfile` to meet any specific networking needs. See Vagrant's [networking documentation](http://docs.vagrantup.com/v2/getting-started/networking.html) for details
 
 ## General Notes:
-### Your PEM File
-Your .pem files need to be secure. Use 'chmod 600'. If not you may get the following error from scp "copying install.sh to 1 server(s)...lost connection".
-
 ### AWS Key Pairs
 To find your key pairs goto your ec2 dashboard -> Networking and Security -> Key Pairs. Make sure this key pair is in the REGION you also set in the properties file.
 
