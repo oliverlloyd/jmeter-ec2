@@ -26,9 +26,8 @@ cd $REMOTE_HOME
 
 if [ $INSTALL_JAVA -eq 1 ] ; then
     # install java on ubuntu
-    export DEBIAN_FRONTEND=noninteractive
     sudo apt-get -qqy update
-    sudo apt-get -qqy install openjdk-7-jre
+    sudo DEBIAN_FRONTEND=noninteractive apt-get -qqy install openjdk-7-jre
 fi
 
 # install jmeter
