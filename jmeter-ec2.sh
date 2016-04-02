@@ -305,6 +305,7 @@ function runsetup() {
         echo "no instances successfully initialised, exiting"
         if [ "$terminate" = "TRUE" ] ; then
         	echo
+          echo
           # attempt to terminate any running instances - just to be sure
           echo "terminating instance(s)..."
         	# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
@@ -694,24 +695,11 @@ function runsetup() {
 		echo
 	fi
 
-  echo
-
-  # run jmeter test plan
+  # Start JMeter
   echo "starting jmeter on:"
   for host in ${hosts[@]} ; do
     echo $host
   done
-  #
-  #    ssh -nq -o UserKnownHostsFile=/dev/null \
-  #         -o StrictHostKeyChecking=no \
-  #        -i $PEM_PATH/$PEM_FILE $USER@${host[$counter]} \               # ec2 key file
-  #        $REMOTE_HOME/$JMETER_VERSION/bin/jmeter.sh -n \               # execute jmeter - non GUI - from where it was just installed
-  #        -t $REMOTE_HOME/execute.jmx \                                      # run the jmx file that was uploaded
-  #        -l $REMOTE_HOME/$project-$DATETIME-$counter.jtl \                  # write results to the root of remote home
-  #        > $project_home/$DATETIME-${host[$counter]}-jmeter.out      # redirect output from Generate Summary Results to a local temp file (read to present real time results to screen)
-  #
-  # TO DO: Temp files are a poor way to track multiple subshells - improve?
-  #
   for counter in ${!hosts[@]} ; do
       ( ssh -nq -o StrictHostKeyChecking=no \
       -p $REMOTE_PORT \
@@ -925,14 +913,13 @@ function runcleanup() {
   if [ -z "$REMOTE_HOSTS" ]; then
   	if [ "$terminate" = "TRUE" ] ; then
       echo
+      echo
       echo "terminating instance(s)..."
 	    # We use attempted_instanceids here to make sure that there are no orphan instances left lying around
       ec2-terminate-instances --region $REGION ${attempted_instanceids[@]}
       echo
   	fi
   fi
-
-
 
 	if [ ! -z "$DB_HOST" ] ; then
 		# mark test as complete in database
