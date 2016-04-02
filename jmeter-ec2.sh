@@ -85,6 +85,9 @@ if [ ! -d "$project_home" ] ; then
     exit
 fi
 
+# The test has not started yet (used to decide what to do when the script stops)
+teststarted=0
+
 # do some basic checks to prevent problems later
 function check_prereqs() {
 	# If there is a custom jmeter.properties, check for:
@@ -160,7 +163,6 @@ function runsetup() {
 
         # create the instance(s) and capture the instance id(s)
         if [ -z "$price" ] ; then
-          echo "No Price specified. Using on-demand instances..."
           echo -n "Requesting $instance_count instance(s)..."
           attempted_instanceids=(`ec2-run-instances \
                           --key "$AMAZON_KEYPAIR_NAME" \
@@ -864,17 +866,15 @@ function runcleanup() {
 	# Turn off the CTRL-C trap now that we are already in the runcleanup function
 	trap - INT
 
-    if [ "$teststarted" -eq 1 ] ; then
-        # display final results
-        echo ">"
-        echo ">"
-        echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), recent tps: $tps_recent_overallhosts (p/sec), errors: $errors_overallhosts"
-        echo ">"
-        echo "===================================================================== END OF JMETER-EC2 TEST =================================================================================="
-        echo
-        echo
-    fi
-
+  if [ "$teststarted" -eq 1 ] ; then
+    # display final results
+    echo ">"
+    echo ">"
+    echo "> $(date +%T): [FINAL RESULTS] total count: $count_overallhosts, overall avg: $avg_overallhosts (ms), overall tps: $tps_overallhosts (p/sec), recent tps: $tps_recent_overallhosts (p/sec), errors: $errors_overallhosts"
+    echo ">"
+    echo "===================================================================== END OF JMETER-EC2 TEST =================================================================================="
+    echo
+    echo
 
     # download the results
     for i in ${!hosts[@]} ; do
@@ -889,18 +889,6 @@ function runcleanup() {
     done
     echo
 
-
-    # terminate any running instances created
-    if [ -z "$REMOTE_HOSTS" ]; then
-		if [ "$terminate" = "TRUE" ] ; then
-	        echo "terminating instance(s)..."
-			# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
-	        ec2-terminate-instances --region $REGION ${attempted_instanceids[@]}
-	        echo
-		fi
-    fi
-
-
     # process the files into one jtl results file
     echo -n "processing results..."
     for (( i=0; i<$instance_count; i++ )) ; do
@@ -908,34 +896,43 @@ function runcleanup() {
         rm $project_home/$project-$DATETIME-$i.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
     done
 
-	# Srt File
+    # Sort File
     sort $project_home/$project-$DATETIME-grouped.jtl >> $project_home/$project-$DATETIME-sorted.jtl
 
     # Insert TESTID
     if [ ! -z "$DB_HOST" ] ; then
         awk -v v_testid="$newTestid," '{print v_testid,$0}' $project_home/$project-$DATETIME-sorted.jtl >> $project_home/$project-$DATETIME-appended.jtl
-	else
+    else
         mv $project_home/$project-$DATETIME-sorted.jtl $project_home/$project-$DATETIME-appended.jtl
     fi
 
-	# Remove blank lines
-	sed '/^$/d' $project_home/$project-$DATETIME-appended.jtl >> $project_home/$project-$DATETIME-noblanks.jtl
+    # Remove blank lines
+    sed '/^$/d' $project_home/$project-$DATETIME-appended.jtl >> $project_home/$project-$DATETIME-noblanks.jtl
 
-    # Split the thread label into two columns
-    #sed 's/ \([0-9][0-9]*-[0-9][0-9]*,\)/,\1/' \
-    #                  $project_home/$project-$DATETIME-sorted.jtl >> \
-    #                  $project_home/$project-$DATETIME-complete.jtl
+    # Remove any lines containing "0,0,Error:" - which seems to be an intermittant bug in JM where the getTimestamp call fails with a nullpointer
+    sed '/^0,0,Error:/d' $project_home/$project-$DATETIME-noblanks.jtl >> $project_home/$project-$DATETIME-complete.jtl
 
-	# Remove any lines containing "0,0,Error:" - which seems to be an intermittant bug in JM where the getTimestamp call fails with a nullpointer
-	sed '/^0,0,Error:/d' $project_home/$project-$DATETIME-noblanks.jtl >> $project_home/$project-$DATETIME-complete.jtl
+    # Calclulate test duration
+    start_time=$(head -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
+    end_time=$(tail -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
+    duration=$(echo "$end_time-$start_time" | bc)
+    if ! [ "$duration" -gt 0 ] ; then
+      duration=0;
+    fi
+  fi
 
-	# Calclulate test duration
-	start_time=$(head -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
-	end_time=$(tail -1 $project_home/$project-$DATETIME-complete.jtl | cut -d',' -f1)
-	duration=$(echo "$end_time-$start_time" | bc)
-	if [ ! $duration -gt 0 ] ; then
-		duration=0;
-	fi
+  # terminate any running instances created
+  if [ -z "$REMOTE_HOSTS" ]; then
+  	if [ "$terminate" = "TRUE" ] ; then
+      echo
+      echo "terminating instance(s)..."
+	    # We use attempted_instanceids here to make sure that there are no orphan instances left lying around
+      ec2-terminate-instances --region $REGION ${attempted_instanceids[@]}
+      echo
+  	fi
+  fi
+
+
 
 	if [ ! -z "$DB_HOST" ] ; then
 		# mark test as complete in database
@@ -943,86 +940,88 @@ function runcleanup() {
 	fi
 
 	# Tidy up
-    if [ -e "$project_home/$project-$DATETIME-grouped.jtl" ] ; then rm $project_home/$project-$DATETIME-grouped.jtl ; fi
-    if [ -e "$project_home/$project-$DATETIME-sorted.jtl" ] ; then rm $project_home/$project-$DATETIME-sorted.jtl ; fi
-    if [ -e "$project_home/$project-$DATETIME-appended.jtl" ] ; then rm $project_home/$project-$DATETIME-appended.jtl ; fi
-    if [ -e "$project_home/$project-$DATETIME-noblanks.jtl" ] ; then rm $project_home/$project-$DATETIME-noblanks.jtl ; fi
+  if [ -e "$project_home/$project-$DATETIME-grouped.jtl" ] ; then rm $project_home/$project-$DATETIME-grouped.jtl ; fi
+  if [ -e "$project_home/$project-$DATETIME-sorted.jtl" ] ; then rm $project_home/$project-$DATETIME-sorted.jtl ; fi
+  if [ -e "$project_home/$project-$DATETIME-appended.jtl" ] ; then rm $project_home/$project-$DATETIME-appended.jtl ; fi
+  if [ -e "$project_home/$project-$DATETIME-noblanks.jtl" ] ; then rm $project_home/$project-$DATETIME-noblanks.jtl ; fi
+  if [ -e "$project_home/$project-$DATETIME-complete.jtl" ] ; then
     mkdir -p $project_home/results/
     mv $project_home/$project-$DATETIME-complete.jtl $project_home/results/
+  fi
 
 	#***************************************************************************
 	# IMPORT RESULTS TO MYSQL DATABASE - IF SPECIFIED IN PROPERTIES
 	# scp import-results.sh
 	if [ ! -z "$DB_HOST" ] ; then
-	    echo -n "copying import-results.sh to database..."
-	    (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+	  echo -n "copying import-results.sh to database..."
+	  (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
 	                                  -i "$DB_PEM_PATH/$DB_PEM_FILE" -P $DB_SSH_PORT \
 	                                  $LOCAL_HOME/import-results.sh \
 	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
 		wait
 		echo -n "done...."
 
-	    # scp results to remote db
-	    echo -n "uploading jtl file to database.."
-	    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-	                                  -i "$DB_PEM_PATH/$DB_PEM_FILE" -P $DB_SSH_PORT \
-	                                  $project_home/results/$project-$DATETIME-complete.jtl \
-	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
-	    wait
-	    echo -n "done...."
+    # scp results to remote db
+    echo -n "uploading jtl file to database.."
+    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
+                                  -i "$DB_PEM_PATH/$DB_PEM_FILE" -P $DB_SSH_PORT \
+                                  $project_home/results/$project-$DATETIME-complete.jtl \
+                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
+    wait
+    echo -n "done...."
 
 		# set permissions
-	    (ssh -n -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
-			"chmod 755 $REMOTE_HOME/import-results.sh")
+    (ssh -n -o StrictHostKeyChecking=no \
+        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
+		"chmod 755 $REMOTE_HOME/import-results.sh")
 
-	    # Import jtl to database...
-	    echo -n "importing jtl file..."
-	    (ssh -nq -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
-	        "$REMOTE_HOME/import-results.sh \
-						'localhost' \
-						'$DB_NAME' \
-						'$DB_USER' \
-						'$DB_PSWD' \
-						'$REMOTE_HOME/import.csv' \
-						'$epoch_milliseconds' \
-						'$release' \
-						'$project' \
-						'$env' \
-						'$comment' \
-						'$duration' \
-						'$newTestid'" \
-	        > $project_home/$DATETIME-import.out) &
+    # Import jtl to database...
+    echo -n "importing jtl file..."
+    (ssh -nq -o StrictHostKeyChecking=no \
+        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
+        "$REMOTE_HOME/import-results.sh \
+					'localhost' \
+					'$DB_NAME' \
+					'$DB_USER' \
+					'$DB_PSWD' \
+					'$REMOTE_HOME/import.csv' \
+					'$epoch_milliseconds' \
+					'$release' \
+					'$project' \
+					'$env' \
+					'$comment' \
+					'$duration' \
+					'$newTestid'" \
+        > $project_home/$DATETIME-import.out) &
 
-	    # check to see if the install scripts are complete
-	    res=0
+    # check to see if complete
+    res=0
 		counter=0
-	    while [ "$res" = 0 ] ; do # Import not complete
-	        echo -n .
-	        res=$(grep -c "import complete" $project_home/$DATETIME-import.out)
-			counter=$(($counter+1))
-	        sleep $counter # With large files this step can take considerable time so we gradually increase wait times to prevent excess screen dottage
-	    done
-	    echo "done"
-    	echo
+    while [ "$res" = 0 ] ; do # Import not complete
+        echo -n .
+        res=$(grep -c "import complete" $project_home/$DATETIME-import.out)
+		counter=$(($counter+1))
+        sleep $counter # With large files this step can take considerable time so we gradually increase wait times to prevent excess screen dottage
+    done
+    echo "done"
+  	echo
 	fi
 	#***************************************************************************
 
 
-    # tidy up working files
-    # for debugging purposes you could comment out these lines
-    if [ stat --printf='' $project_home/$DATETIME*.out 2>/dev/null ] ; then rm $project_home/$DATETIME*.out ; fi
-    if [ stat --printf='' $project_home/working* 2>/dev/null ] ; then rm $project_home/working* ; fi
+  # tidy up working files
+  # for debugging purposes you could comment out these lines
+  if [ stat --printf='' $project_home/$DATETIME*.out 2>/dev/null ] ; then rm $project_home/$DATETIME*.out ; fi
+  if [ stat --printf='' $project_home/working* 2>/dev/null ] ; then rm $project_home/working* ; fi
 
 
-    echo
-    echo "   -------------------------------------------------------------------------------------"
-    echo "                  jmeter-ec2 Automation Script - COMPLETE"
-    echo
-    echo "   Test Results: $project_home/results/$project-$DATETIME-complete.jtl"
-    echo "   -------------------------------------------------------------------------------------"
-    echo
+  echo
+  echo "   -------------------------------------------------------------------------------------"
+  echo "                  jmeter-ec2 Automation Script - COMPLETE"
+  echo
+  echo "   Test Results: $project_home/results/$project-$DATETIME-complete.jtl"
+  echo "   -------------------------------------------------------------------------------------"
+  echo
 }
 
 function updateTest() {
@@ -1096,6 +1095,7 @@ function control_c(){
 	# Turn off the CTRL-C trap now that it has been invoked once already
 	trap - INT
 
+  if [ "$teststarted" -eq 1 ] ; then
     # Stop the running test on each host
     echo
     echo "> Stopping test..."
@@ -1106,9 +1106,10 @@ function control_c(){
     done
     wait
     echo ">"
+  fi
 
-    runcleanup
-    exit
+  runcleanup
+  exit
 }
 
 # trap keyboard interrupt (control-c)
