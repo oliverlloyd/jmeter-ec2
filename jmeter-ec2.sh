@@ -1006,7 +1006,9 @@ function runcleanup() {
   echo "   -------------------------------------------------------------------------------------"
   echo "                  jmeter-ec2 Automation Script - COMPLETE"
   echo
-  echo "   Test Results: $project_home/results/$project-$DATETIME-complete.jtl"
+  if [ "$teststarted" -eq 1 ] ; then
+    echo "   Test Results: $project_home/results/$project-$DATETIME-complete.jtl"
+  fi
   echo "   -------------------------------------------------------------------------------------"
   echo
 }
