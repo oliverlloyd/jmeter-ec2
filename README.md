@@ -6,6 +6,10 @@ By default it will launch the required hardware using Amazon EC2 (ec2 mode) usin
 
 The script does not use JMeter's Distributed Mode so you do not need to adjust the test parameters to ensure even distribution of the load; the script will automatically adjust the thread counts based on how many hosts are in use. As the test is running it will collate the results from each host in real time and display an output of the Generate Summary Results listener to the screen (showing both results host by host and an aggregated view for the entire run). Once execution is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual JMeter listeners.
 
+<img width="1254" alt="jmeter-ec2-screenshot-1" src="https://cloud.githubusercontent.com/assets/1336821/14234911/df4385bc-f9e6-11e5-96fa-37230e40a670.png">
+
+<img width="1252" alt="jmeter-ec2-screenshot-2" src="https://cloud.githubusercontent.com/assets/1336821/14234913/e4a7e516-f9e6-11e5-95a3-1152a54e46ea.png">
+
 ## Getting Started
 ### Prerequisites
 * An Amazon ec2 account is required (unless valid hosts are specified using REMOTE_HOSTS property).
