@@ -64,7 +64,7 @@ apache-jmeter-*)
     echo "Driver installed"
     ;;
 *)
-    echo "Please check the value of JMETER_VERSION in the properties file, $JMETER_VERSION is not recognised."
+    echo "Please check the value of JMETER_VERSION in the properties file, $JMETER_VERSION is not recognised"
 esac
 
 echo "software installed"
