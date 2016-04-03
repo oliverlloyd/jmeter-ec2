@@ -26,8 +26,12 @@ cd $REMOTE_HOME
 
 if [ $INSTALL_JAVA -eq 1 ] ; then
     # install java on ubuntu
+    echo "Updating apt-get..."
     sudo apt-get -qqy update
+    echo "Update of apt-get complete"
+    echo "Installing java..."
     sudo DEBIAN_FRONTEND=noninteractive apt-get -qqy install openjdk-7-jre
+    echo "Java installed"
 fi
 
 # install jmeter
@@ -45,11 +49,19 @@ jakarta-jmeter-2.5.1)
 apache-jmeter-*)
     # JMeter version 2.x
     wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
+    echo "Downloading jmeter..."
+    echo "Jmeter downloaded"
+    echo "Uncompressing jmeter..."
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
+    echo "Jmeter unpacked"
     # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
+    echo "Installing plugins..."
     install_jmeter_plugins
+    echo "Plugins installed"
     # install mysql jdbc driver
+    echo "Installing mysql driver..."
 	install_mysql_driver
+    echo "Driver installed"
     ;;
 *)
     echo "Please check the value of JMETER_VERSION in the properties file, $JMETER_VERSION is not recognised."
