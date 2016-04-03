@@ -38,7 +38,7 @@ fi
 case "$JMETER_VERSION" in
 jakarta-jmeter-2.5.1)
     # JMeter version 2.5.1
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
+    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
     # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
     install_jmeter_plugins
@@ -48,8 +48,8 @@ jakarta-jmeter-2.5.1)
 
 apache-jmeter-*)
     # JMeter version 2.x
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     echo "Downloading jmeter..."
+    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     echo "Jmeter downloaded"
     echo "Uncompressing jmeter..."
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
