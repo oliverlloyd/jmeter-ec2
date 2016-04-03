@@ -12,12 +12,12 @@ JMETER_VERSION=$3
 
 
 function install_jmeter_plugins() {
-    wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
+    wget -nv -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
     mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/$JMETER_VERSION/lib/ext/
 }
 
 function install_mysql_driver() {
-    wget -q -O $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar https://s3.amazonaws.com/jmeter-ec2/mysql-connector-java-5.1.16-bin.jar
+    wget -nv -O $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar https://s3.amazonaws.com/jmeter-ec2/mysql-connector-java-5.1.16-bin.jar
     mv $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar $REMOTE_HOME/$JMETER_VERSION/lib/
 }
 
@@ -38,7 +38,7 @@ fi
 case "$JMETER_VERSION" in
 jakarta-jmeter-2.5.1)
     # JMeter version 2.5.1
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
+    wget -nv -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
     # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
     install_jmeter_plugins
@@ -49,7 +49,7 @@ jakarta-jmeter-2.5.1)
 apache-jmeter-*)
     # JMeter version 2.x
     echo "Downloading jmeter..."
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
+    wget -nv -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
     echo "Jmeter downloaded"
     echo "Uncompressing jmeter..."
     tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
