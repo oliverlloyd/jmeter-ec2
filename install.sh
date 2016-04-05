@@ -12,8 +12,8 @@ JMETER_VERSION=$3
 
 
 function install_jmeter_plugins() {
-    wget -q -O $REMOTE_HOME/JMeterPlugins.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins.jar
-    mv $REMOTE_HOME/JMeterPlugins.jar $REMOTE_HOME/$JMETER_VERSION/lib/ext/
+    wget -q -O $REMOTE_HOME/JMeterPlugins-Extras-1.3.1.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins-Extras-1.3.1.jar
+    mv $REMOTE_HOME/JMeterPlugins-Extras-1.3.1.jar $REMOTE_HOME/$JMETER_VERSION/lib/ext/
 }
 
 function install_mysql_driver() {
@@ -21,50 +21,71 @@ function install_mysql_driver() {
     mv $REMOTE_HOME/mysql-connector-java-5.1.16-bin.jar $REMOTE_HOME/$JMETER_VERSION/lib/
 }
 
+function install_java() {
+    sudo DEBIAN_FRONTEND=noninteractive apt-get -qqy install openjdk-7-jre
+}
+
+function install_jmeter() {
+    # ------------------------------------------------
+    #      Decide where to download jmeter from
+    #
+    # Order of preference:
+    #   1. Mirror, if the desired version is current
+    #   2. S3, if not current and we have a copy
+    #   3. Archive, as a backup
+    # ------------------------------------------------
+
+    # Mirrors only host the current version, get the preferred mirror for this location
+    preferred_mirror=$(curl -s 'http://www.apache.org/dyn/closer.cgi?as_json=1' | grep "preferred" | cut -d ':' -f3 | cut -d'"' -f1 | awk -F// '{print $NF}' | sed 's/.$//')
+    # Scrape the main binaries page to see what the current version is
+    current=$(curl -s 'http://www.apache.org/dist/jmeter/binaries/')
+
+    if [ $(echo $current | grep -c "$JMETER_VERSION") -gt "0" ] ; then
+        # This is the current version of jmeter so use the preferred mirror to download
+        echo "downloading from preferred mirror: http://$preferred_mirror/jmeter/binaries/$JMETER_VERSION.tgz"
+        wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://$preferred_mirror/jmeter/binaries/$JMETER_VERSION.tgz
+    elif [ $(curl -sI https://s3.amazonaws.com/jmeter-ec2/$JMETER_VERSION.tgz | grep -c "403 Forbidden") -eq "0" ] ; then
+        # It wasn't the current version but we have a copy on S3 so use that
+        echo "Downloading jmeter from S3"
+        wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz https://s3.amazonaws.com/jmeter-ec2/$JMETER_VERSION.tgz
+    else
+        # Fall back to the archive server
+        echo "Downloading jmeter from Apache Archive"
+        wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://archive.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
+    fi
+
+    # Untar downloaded file
+    tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
+}
+
 
 cd $REMOTE_HOME
 
+echo "Updating apt-get..."
+sudo apt-get -qqy update
+echo "Update of apt-get complete"
+
 if [ $INSTALL_JAVA -eq 1 ] ; then
     # install java on ubuntu
-    echo "Updating apt-get..."
-    sudo apt-get -qqy update
-    echo "Update of apt-get complete"
     echo "Installing java..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get -qqy install openjdk-7-jre
+    install_java
     echo "Java installed"
 fi
 
 # install jmeter
-case "$JMETER_VERSION" in
-jakarta-jmeter-2.5.1)
-    # JMeter version 2.5.1
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
-    tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
-    # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
-    install_jmeter_plugins
-    # install mysql jdbc driver
-	install_mysql_driver
-    ;;
+echo "Installing jmeter..."
+install_jmeter
+echo "Jmeter installed"
 
-apache-jmeter-*)
-    # JMeter version 2.x
-    echo "Downloading jmeter..."
-    wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://www.apache.org/dist/jmeter/binaries/$JMETER_VERSION.tgz
-    echo "Jmeter downloaded"
-    echo "Uncompressing jmeter..."
-    tar -xf $REMOTE_HOME/$JMETER_VERSION.tgz
-    echo "Jmeter unpacked"
-    # install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
-    echo "Installing plugins..."
-    install_jmeter_plugins
-    echo "Plugins installed"
-    # install mysql jdbc driver
-    echo "Installing mysql driver..."
-	install_mysql_driver
-    echo "Driver installed"
-    ;;
-*)
-    echo "Please check the value of JMETER_VERSION in the properties file, $JMETER_VERSION is not recognised"
-esac
+# install jmeter-plugins [http://code.google.com/p/jmeter-plugins/]
+echo "Installing plugins..."
+install_jmeter_plugins
+echo "Plugins installed"
 
+# install mysql jdbc driver
+echo "Installing mysql driver..."
+install_mysql_driver
+echo "Driver installed"
+
+# Done
 echo "software installed"
