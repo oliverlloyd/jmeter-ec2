@@ -30,24 +30,18 @@ function install_jmeter() {
     #      Decide where to download jmeter from
     #
     # Order of preference:
-    #   1. Mirror, if the desired version is current
-    #   2. S3, if not current and we have a copy
+    #   1. S3, if we have a copy of the file
+    #   2. Mirror, if the desired version is current
     #   3. Archive, as a backup
     # ------------------------------------------------
-
-    # Mirrors only host the current version, get the preferred mirror for this location
-    preferred_mirror=$(curl -s 'http://www.apache.org/dyn/closer.cgi?as_json=1' | grep "preferred" | cut -d ':' -f3 | cut -d'"' -f1 | awk -F// '{print $NF}' | sed 's/.$//')
-    # Scrape the main binaries page to see what the current version is
-    current=$(curl -s 'http://www.apache.org/dist/jmeter/binaries/')
-
-    if [ $(echo $current | grep -c "$JMETER_VERSION") -gt "0" ] ; then
-        # This is the current version of jmeter so use the preferred mirror to download
-        echo "downloading from preferred mirror: http://$preferred_mirror/jmeter/binaries/$JMETER_VERSION.tgz"
-        wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz http://$preferred_mirror/jmeter/binaries/$JMETER_VERSION.tgz
-    elif [ $(curl -sI https://s3.amazonaws.com/jmeter-ec2/$JMETER_VERSION.tgz | grep -c "403 Forbidden") -eq "0" ] ; then
-        # It wasn't the current version but we have a copy on S3 so use that
+    if [ $(curl -sI https://s3.amazonaws.com/jmeter-ec2/$JMETER_VERSION.tgz | grep -c "403 Forbidden") -eq "0" ] ; then
+        # We have a copy on S3 so use that
         echo "Downloading jmeter from S3"
         wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz https://s3.amazonaws.com/jmeter-ec2/$JMETER_VERSION.tgz
+    elif [ $(echo $(curl -s 'http://www.apache.org/dist/jmeter/binaries/') | grep -c "$JMETER_VERSION") -gt "0" ] ; then
+        # Nothing found on S3 but this is the current version of jmeter so use the preferred mirror to download
+        echo "downloading jmeter from a Mirror"
+        wget -q -O $REMOTE_HOME/$JMETER_VERSION.tgz "http://www.apache.org/dyn/closer.cgi?filename=jmeter/binaries/$JMETER_VERSION.tgz&action=download"
     else
         # Fall back to the archive server
         echo "Downloading jmeter from Apache Archive"
