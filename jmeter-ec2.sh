@@ -270,15 +270,18 @@ function runsetup() {
     status_check_count=0
     status_check_limit=90
     status_check_limit=`echo "$status_check_limit + $countof_instanceids" | bc` # increase wait time based on instance count
-    echo -n "waiting for instance status checks to pass (this can take several minutes)..."
+    echo "waiting for instance status checks to pass (this can take several minutes)..."
     count_passed=0
     while [ "$count_passed" -ne "$instance_count" ] && [ $status_check_count -lt $status_check_limit ]
     do
-        echo -n .
+        # Update progress bar
+        progressBar $countof_instanceids $count_passed
         status_check_count=$(( $status_check_count + 1))
         count_passed=$(ec2-describe-instance-status --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
-        sleep 3
+        sleep 1
     done
+    progressBar $countof_instanceids $count_passed true
+    echo
 
     if [ $status_check_count -lt $status_check_limit ] ; then # all hosts started ok because count_passed==instance_count
       # set the instanceids array to use from now on - attempted = actual
@@ -289,7 +292,7 @@ function runsetup() {
 
       # set hosts array
       hosts=(`ec2-describe-instances --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
-      echo "all hosts ready"
+      # echo "all hosts ready"
     else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
       original_count=$countof_instanceids
       # filter requested instances for only those that started well
@@ -402,7 +405,7 @@ function runsetup() {
 
   # scp install.sh
   if [ "$setup" = "TRUE" ] ; then
-  	echo -n "copying install.sh to $instance_count server(s)..."
+  	echo "copying install.sh to $instance_count server(s)..."
     for host in ${hosts[@]} ; do
       (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                     -i "$PEM_PATH/$PEM_FILE" \
@@ -417,32 +420,36 @@ function runsetup() {
     res=0
     while [ "$res" != "$instance_count" ] ;
     do
-        echo -n .
+        # Update progress bar
+        progressBar $instance_count $res
         res=$(grep -c "done" $project_home/$DATETIME*scpinstall.out \
             | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-        sleep 3
+        sleep 1
     done
-    echo "complete"
+    progressBar $instance_count $res true
+    echo
     echo
 
     # Install test software
-    echo "running install.sh on $instance_count server(s)..."
+    echo "running install.sh on $instance_count server(s) (this can take several minutes)..."
     for host in ${hosts[@]} ; do
       (ssh -nq -o StrictHostKeyChecking=no \
             -i "$PEM_PATH/$PEM_FILE" $USER@$host -p $REMOTE_PORT \
-            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION"\
+            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION 2>&1"\
             > $project_home/$DATETIME-$host-install.out) &
     done
 
     # check to see if the install scripts are complete
     res=0
     while [ "$res" != "$instance_count" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
-      echo -n .
+      # Update progress bar
+      progressBar $instance_count $res
       res=$(grep -c "software installed" $project_home/$DATETIME*install.out \
           | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
-      sleep 3
+      sleep 1
     done
-    echo "complete"
+    progressBar $instance_count $res true
+    echo
     echo
   fi
 
@@ -583,7 +590,7 @@ function runsetup() {
   	unset threads
   done
   echo
-  echo "...thread counts updated"
+  echo "thread counts updated"
   echo
 
   # scp the test files onto each host
@@ -1014,7 +1021,6 @@ function runcleanup() {
 }
 
 function updateTest() {
-
 	sqlstr="mysql -u $DB_USER -p$DB_PSWD $DB_NAME"
 
 	function dosql {
@@ -1070,6 +1076,42 @@ function updateTest() {
 			dosql "$sqlUpdateStatus"
 			;;
 	esac
+}
+
+progressBarWidth=50
+spinnerIndex=1
+sp="/-\|"
+
+# Function to draw progress bar
+progressBar() {
+  taskCount=$1
+  tasksDone=$2
+  progressDone=$3
+  # Calculate number of fill/empty slots in the bar
+  progress=$(echo "$progressBarWidth/$taskCount*$tasksDone" | bc -l)  
+  fill=$(printf "%.0f\n" $progress)
+  if [ $fill -gt $progressBarWidth ]; then
+    fill=$progressBarWidth
+  fi
+  empty=$(($fill-$progressBarWidth))
+
+  # Percentage Calculation
+  percent=$(echo "100/$taskCount*$tasksDone" | bc -l)
+  percent=$(printf "%0.2f\n" $percent)
+  if [ $(echo "$percent>100" | bc) -gt 0 ]; then
+    percent="100.00"
+  fi
+
+  # Output to screen
+  printf "\r["
+  printf "%${fill}s" '' | tr ' ' \#
+  printf "%${empty}s" '' | tr ' ' " "
+  printf "] $percent%% - ($tasksDone of $taskCount) "
+  if [ $progressDone ] ; then
+    printf " - Done."
+  else
+    printf " \b${sp:spinnerIndex++%${#sp}:1} "
+  fi
 }
 
 function control_c(){
