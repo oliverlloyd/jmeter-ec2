@@ -3,7 +3,6 @@
 # ========================================================================================
 # jmeter-ec2.sh
 # https://github.com/oliverlloyd/jmeter-ec2
-# http://www.http503.com/2012/run-jmeter-on-amazon-ec2-cloud/
 # ========================================================================================
 #
 # Copyright 2012 - Oliver Lloyd - GNU GENERAL PUBLIC LICENSE
