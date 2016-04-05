@@ -426,11 +426,11 @@ function runsetup() {
     echo
 
     # Install test software
-    echo "running install.sh on $instance_count server(s)..."
+    echo -n "running install.sh on $instance_count server(s) (this can take several minutes)..."
     for host in ${hosts[@]} ; do
       (ssh -nq -o StrictHostKeyChecking=no \
             -i "$PEM_PATH/$PEM_FILE" $USER@$host -p $REMOTE_PORT \
-            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION"\
+            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION 2>&1"\
             > $project_home/$DATETIME-$host-install.out) &
     done
 
