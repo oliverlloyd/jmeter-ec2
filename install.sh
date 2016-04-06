@@ -12,8 +12,9 @@ JMETER_VERSION=$3
 
 
 function install_jmeter_plugins() {
-    wget -q -O $REMOTE_HOME/JMeterPlugins-Extras-1.3.1.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins-Extras-1.3.1.jar
-    mv $REMOTE_HOME/JMeterPlugins-Extras-1.3.1.jar $REMOTE_HOME/$JMETER_VERSION/lib/ext/
+    wget -q -O $REMOTE_HOME/JMeterPlugins-Extras.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins-Extras.jar
+    wget -q -O $REMOTE_HOME/JMeterPlugins-Standard.jar https://s3.amazonaws.com/jmeter-ec2/JMeterPlugins-Standard.jar
+    mv $REMOTE_HOME/JMeterPlugins*.jar $REMOTE_HOME/$JMETER_VERSION/lib/ext/
 }
 
 function install_mysql_driver() {
