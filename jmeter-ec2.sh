@@ -412,7 +412,7 @@ function runsetup() {
                     $LOCAL_HOME/install.sh \
                     $LOCAL_HOME/jmeter-ec2.properties \
                     $USER@$host:$REMOTE_HOME \
-                    && echo "done" > $project_home/$DATETIME-$host-scpinstall.out)
+                    && echo "done" > $project_home/$DATETIME-$host-scpinstall.out) &  
     done
 
     # check to see if the scp call is complete (could just use the wait command here...)
@@ -421,8 +421,10 @@ function runsetup() {
     do
         # Update progress bar
         progressBar $instance_count $res
-        res=$(grep -c "done" $project_home/$DATETIME*scpinstall.out \
-            | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
+        # Count how many out files we have for the copy (if the file exists the copy completed)
+        # Note. We send stderr to dev/null in the ls cmd below to prevent file not found errors filling the screen
+        # and the sed command here trims whitespace
+        res=$(ls -l $project_home/$DATETIME*scpinstall.out 2>/dev/null | wc -l | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         sleep 1
     done
     progressBar $instance_count $res true
