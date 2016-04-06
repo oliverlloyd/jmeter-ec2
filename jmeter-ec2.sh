@@ -267,7 +267,7 @@ function runsetup() {
 
     # wait for each instance to be fully operational
     status_check_count=0
-    status_check_limit=90
+    status_check_limit=270
     status_check_limit=`echo "$status_check_limit + $countof_instanceids" | bc` # increase wait time based on instance count
     echo "waiting for instance status checks to pass (this can take several minutes)..."
     count_passed=0
