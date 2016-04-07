@@ -26,25 +26,17 @@ DATETIME=$(date "+%s")
 # First make sure we have the required params and if not print out an instructive message
 #if [ -z "$project" ] ; then
 if [ "$1" == "-h" ] ; then
-	echo 'usage: project="abc" percent=20 setup="TRUE" terminate="TRUE" count="3" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
+	echo 'usage: project="abc" percent=20 setup="TRUE" terminate="TRUE" count="3" ./jmeter-ec2.sh'
 	echo
 	echo "[project]         -	required, directory and jmx name"
 	echo "[count]           -	optional, default=1"
 	echo "[percent]         -	optional, default=100"
 	echo "[setup]           -	optional, default='TRUE'"
 	echo "[terminate]       -	optional, default='TRUE'"
-	echo "[env]             -	optional"
-	echo "[release]         -	optional"
-	echo "[comment]         -	optional"
   echo "[price]           - optional"
 	echo
 	exit
 fi
-
-# Set any null parameters to '-'
-if [ -z "$env" ] ; then env="-" ; fi
-if [ -z "$release" ] ; then release="-" ; fi
-if [ -z "$comment" ] ; then comment="-" ; fi
 
 # default to 100 if percent is not specified
 if [ -z "$percent" ] ; then percent=100 ; fi
@@ -669,34 +661,9 @@ function runsetup() {
       echo -n "done...."
     fi
 
-    if [ ! -z "$DB_HOST" ] ; then
-    	# upload import-results.sh
-      echo -n "copying import-results.sh to database..."
-      (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                                      -i "$DB_PEM_PATH/$DB_PEM_FILE" -P $DB_SSH_PORT \
-                                      $LOCAL_HOME/import-results.sh \
-                                      $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
-    	wait
-
-    	# set permissions
-      (ssh -n -o StrictHostKeyChecking=no \
-            -i "$DB_PEM_PATH/$DB_PEM_FILE" "$DB_PEM_USER@$DB_HOST" -p $DB_SSH_PORT \
-    		    "chmod 755 $REMOTE_HOME/import-results.sh")
-    	wait
-    	echo -n "done...."
-    fi
-
     echo "all files uploaded"
     echo
   fi
-
-	if [ ! -z "$DB_HOST" ] ; then
-		# Add an entry to the tests table in the database
-		echo -n "creating new test in database..."
-		updateTest 0 x x "$release" "$project" "$env" "$comment"
-		echo "testid $newTestid created"
-		echo
-	fi
 
   # Start JMeter
   echo "starting jmeter on:"
@@ -726,10 +693,6 @@ function runtest() {
 	epoch_seconds=$(date +%s)
 	epoch_milliseconds=$(echo "$epoch_seconds* 1000" | bc) # milliseconds since Mick Jagger became famous
 	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
-	if [ ! -z "$DB_HOST" ] ; then
-		# mark test as running in database
-		updateTest 1 "$newTestid" 0 "$release" "$project" "$env" "$comment" "$epoch_milliseconds"
-	fi
 
   echo "JMeter started at $start_date"
   echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
@@ -890,15 +853,8 @@ function runcleanup() {
     # Sort File
     sort $project_home/$project-$DATETIME-grouped.jtl >> $project_home/$project-$DATETIME-sorted.jtl
 
-    # Insert TESTID
-    if [ ! -z "$DB_HOST" ] ; then
-      awk -v v_testid="$newTestid," '{print v_testid,$0}' $project_home/$project-$DATETIME-sorted.jtl >> $project_home/$project-$DATETIME-appended.jtl
-    else
-      mv $project_home/$project-$DATETIME-sorted.jtl $project_home/$project-$DATETIME-appended.jtl
-    fi
-
     # Remove blank lines
-    sed '/^$/d' $project_home/$project-$DATETIME-appended.jtl >> $project_home/$project-$DATETIME-noblanks.jtl
+    sed '/^$/d' $project_home/$project-$DATETIME-sorted.jtl >> $project_home/$project-$DATETIME-noblanks.jtl
 
     # Remove any lines containing "0,0,Error:" - which seems to be an intermittant bug in JM where the getTimestamp call fails with a nullpointer
     sed '/^0,0,Error:/d' $project_home/$project-$DATETIME-noblanks.jtl >> $project_home/$project-$DATETIME-complete.jtl
@@ -924,80 +880,14 @@ function runcleanup() {
   	fi
   fi
 
-	if [ ! -z "$DB_HOST" ] ; then
-		# mark test as complete in database
-		updateTest 2 "$newTestid" "$duration"
-	fi
-
 	# Tidy up
   if [ -e "$project_home/$project-$DATETIME-grouped.jtl" ] ; then rm $project_home/$project-$DATETIME-grouped.jtl ; fi
   if [ -e "$project_home/$project-$DATETIME-sorted.jtl" ] ; then rm $project_home/$project-$DATETIME-sorted.jtl ; fi
-  if [ -e "$project_home/$project-$DATETIME-appended.jtl" ] ; then rm $project_home/$project-$DATETIME-appended.jtl ; fi
   if [ -e "$project_home/$project-$DATETIME-noblanks.jtl" ] ; then rm $project_home/$project-$DATETIME-noblanks.jtl ; fi
   if [ -e "$project_home/$project-$DATETIME-complete.jtl" ] ; then
     mkdir -p $project_home/results/
     mv $project_home/$project-$DATETIME-complete.jtl $project_home/results/
   fi
-
-	#***************************************************************************
-	# IMPORT RESULTS TO MYSQL DATABASE - IF SPECIFIED IN PROPERTIES
-	# scp import-results.sh
-	if [ ! -z "$DB_HOST" ] ; then
-	  echo -n "copying import-results.sh to database..."
-	  (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-	                                  -i "$DB_PEM_PATH/$DB_PEM_FILE" -P $DB_SSH_PORT \
-	                                  $LOCAL_HOME/import-results.sh \
-	                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME) &
-		wait
-		echo -n "done...."
-
-    # scp results to remote db
-    echo -n "uploading jtl file to database.."
-    (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r \
-                                  -i "$DB_PEM_PATH/$DB_PEM_FILE" -P $DB_SSH_PORT \
-                                  $project_home/results/$project-$DATETIME-complete.jtl \
-                                  $DB_PEM_USER@$DB_HOST:$REMOTE_HOME/import.csv) &
-    wait
-    echo -n "done...."
-
-		# set permissions
-    (ssh -n -o StrictHostKeyChecking=no \
-        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
-		"chmod 755 $REMOTE_HOME/import-results.sh")
-
-    # Import jtl to database...
-    echo -n "importing jtl file..."
-    (ssh -nq -o StrictHostKeyChecking=no \
-        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
-        "$REMOTE_HOME/import-results.sh \
-					'localhost' \
-					'$DB_NAME' \
-					'$DB_USER' \
-					'$DB_PSWD' \
-					'$REMOTE_HOME/import.csv' \
-					'$epoch_milliseconds' \
-					'$release' \
-					'$project' \
-					'$env' \
-					'$comment' \
-					'$duration' \
-					'$newTestid'" \
-        > $project_home/$DATETIME-import.out) &
-
-    # check to see if complete
-    res=0
-		counter=0
-    while [ "$res" = 0 ] ; do # Import not complete
-        echo -n .
-        res=$(grep -c "import complete" $project_home/$DATETIME-import.out)
-		counter=$(($counter+1))
-        sleep $counter # With large files this step can take considerable time so we gradually increase wait times to prevent excess screen dottage
-    done
-    echo "done"
-  	echo
-	fi
-	#***************************************************************************
-
 
   # tidy up working files
   # for debugging purposes you could comment out these lines
@@ -1016,63 +906,6 @@ function runcleanup() {
   echo
 }
 
-function updateTest() {
-	sqlstr="mysql -u $DB_USER -p$DB_PSWD $DB_NAME"
-
-	function dosql {
-		sqlresult=$(ssh -nq -o StrictHostKeyChecking=no \
-	        -i $DB_PEM_PATH/$DB_PEM_FILE $DB_PEM_USER@$DB_HOST -p $DB_SSH_PORT \
-			    "$sqlstr -e '$1'")
-	}
-
-	case $1 in
-		0)	#pending
-			sqlcreate="CREATE TABLE IF NOT EXISTS  tests ( \
-			  testid int(11) NOT NULL AUTO_INCREMENT, \
-			  buildlife varchar(45) DEFAULT NULL, \
-			  project varchar(45) DEFAULT NULL, \
-			  environment varchar(45) DEFAULT NULL, \
-			  duration varchar(45) DEFAULT NULL, \
-			  comment varchar(45) DEFAULT NULL, \
-			  startdate varchar(45) DEFAULT NULL, \
-			  accepted varchar(45) DEFAULT NULL, \
-			  status int(11) DEFAULT NULL, \
-			  value9 varchar(45) DEFAULT NULL, \
-			  value10 varchar(45) DEFAULT NULL, \
-			  PRIMARY KEY (testid) \
-			) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;"
-
-			dosql "$sqlcreate"
-
-			# Insert a new row in tests table,
-
-			sqlInsertTestid="INSERT INTO $DB_NAME.tests (buildlife, project, environment, duration, comment, startdate, accepted, status) VALUES (\"$4\", \"$5\", \"$6\", \"0\", \"$7\", \"0\", \"N\", \"0\")"
-
-			dosql "$sqlInsertTestid"
-
-			# Get last testid
-			sqlGetMaxTestid="SELECT max(testid) from $DB_NAME.tests"
-
-			dosql "$sqlGetMaxTestid"
-
-			newTestid=$(echo $sqlresult | cut -d ' ' -f2)
-			;;
-
-		1)	#running
-			# Update status in tests
-			sqlUpdateStatus="UPDATE $DB_NAME.tests SET status = 1, startdate = $8 WHERE testid = $2"
-
-			dosql "$sqlUpdateStatus"
-			;;
-
-		2)	#complete
-			# Update status in tests
-			sqlUpdateStatus="UPDATE $DB_NAME.tests SET status = 2, duration = $3 WHERE testid = $2"
-
-			dosql "$sqlUpdateStatus"
-			;;
-	esac
-}
 
 progressBarWidth=50
 spinnerIndex=1

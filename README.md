@@ -46,10 +46,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
     [percent]         - optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
     [setup]           - optional, default=TRUE. Set to "FALSE" if a pre-defined host is being used that has already been setup (had files copied to it, jmeter installed, etc.)
     [terminate]       - optional, default=TRUE. Set to "FALSE" if the instances created should not be terminated.
-    [price]           - optional, if specified spot instances will be requested at this price    
-    [env]             - optional, this is only used in db_mode where this text is written against the results
-    [release]         - optional, this is only used in db_mode where this text is written against the results
-    [comment]         - optional, this is only used in db_mode where this text is written against the results
+    [price]           - optional, if specified spot instances will be requested at this price
 
 ###Advanced Properties
 
