@@ -371,14 +371,9 @@ function runsetup() {
       echo "complete"
       echo
     fi
-
-    # Tell install.sh to attempt to install JAVA
-    attemptjavainstall=1
   else # the property REMOTE_HOSTS is set so we wil use this list of predefined hosts instead
     hosts=(`echo $REMOTE_HOSTS | tr "," "\n" | tr -d ' '`)
     instance_count=${#hosts[@]}
-    # Tell install.sh to not attempt to install JAVA
-    attemptjavainstall=0
     echo
     echo "   -------------------------------------------------------------------------------------"
     echo "       jmeter-ec2 Automation Script - Running $project.jmx over $instance_count predefined host(s)"
@@ -402,17 +397,17 @@ function runsetup() {
     done
   fi
 
-  # scp install.sh
+  # scp verify.sh
   if [ "$setup" = "TRUE" ] ; then
-  	echo "copying install.sh to $instance_count server(s)..."
+  	echo "copying verify.sh to $instance_count server(s)..."
     for host in ${hosts[@]} ; do
       (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                     -i "$PEM_PATH/$PEM_FILE" \
                     -P $REMOTE_PORT \
-                    $LOCAL_HOME/install.sh \
+                    $LOCAL_HOME/verify.sh \
                     $LOCAL_HOME/jmeter-ec2.properties \
                     $USER@$host:$REMOTE_HOME \
-                    && echo "done" > $project_home/$DATETIME-$host-scpinstall.out) &  
+                    && echo "done" > $project_home/$DATETIME-$host-scpverify.out) &  
     done
 
     # check to see if the scp call is complete (could just use the wait command here...)
@@ -424,7 +419,7 @@ function runsetup() {
         # Count how many out files we have for the copy (if the file exists the copy completed)
         # Note. We send stderr to dev/null in the ls cmd below to prevent file not found errors filling the screen
         # and the sed command here trims whitespace
-        res=$(ls -l $project_home/$DATETIME*scpinstall.out 2>/dev/null | wc -l | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        res=$(ls -l $project_home/$DATETIME*scpverify.out 2>/dev/null | wc -l | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         sleep 1
     done
     progressBar $instance_count $res true
@@ -432,20 +427,20 @@ function runsetup() {
     echo
 
     # Install test software
-    echo "running install.sh on $instance_count server(s) (this can take several minutes)..."
+    echo "running verify.sh on $instance_count server(s)..."
     for host in ${hosts[@]} ; do
       (ssh -nq -o StrictHostKeyChecking=no \
             -i "$PEM_PATH/$PEM_FILE" $USER@$host -p $REMOTE_PORT \
-            "$REMOTE_HOME/install.sh $REMOTE_HOME $attemptjavainstall $JMETER_VERSION 2>&1"\
-            > $project_home/$DATETIME-$host-install.out) &
+            "$REMOTE_HOME/verify.sh $JMETER_VERSION 2>&1"\
+            > $project_home/$DATETIME-$host-verify.out) &
     done
 
-    # check to see if the install scripts are complete
+    # check to see if the verify script is complete
     res=0
     while [ "$res" != "$instance_count" ] ; do # Installation not complete (count of matches for 'software installed' not equal to count of hosts running the test)
       # Update progress bar
       progressBar $instance_count $res
-      res=$(grep -c "software installed" $project_home/$DATETIME*install.out \
+      res=$(grep -c "software installed" $project_home/$DATETIME*verify.out \
           | awk -F: '{ s+=$NF } END { print s }') # the awk command here sums up the output if multiple matches were found
       sleep 1
     done
