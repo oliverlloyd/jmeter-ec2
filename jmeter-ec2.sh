@@ -1092,17 +1092,17 @@ progressBar() {
   empty=$(($fill-$progressBarWidth))
 
   # Percentage Calculation
-  percent=$(echo "100/$taskCount*$tasksDone" | bc -l)
-  percent=$(printf "%0.2f\n" $percent)
-  if [ $(echo "$percent>100" | bc) -gt 0 ]; then
-    percent="100.00"
+  progressPercent=$(echo "100/$taskCount*$tasksDone" | bc -l)
+  progressPercent=$(printf "%0.2f\n" $progressPercent)
+  if [ $(echo "$progressPercent>100" | bc) -gt 0 ]; then
+    progressPercent="100.00"
   fi
 
   # Output to screen
   printf "\r["
   printf "%${fill}s" '' | tr ' ' \#
   printf "%${empty}s" '' | tr ' ' " "
-  printf "] $percent%% - ($tasksDone of $taskCount) "
+  printf "] $progressPercent%% - ($tasksDone of $taskCount) "
   if [ $progressDone ] ; then
     printf " - Done."
   else
