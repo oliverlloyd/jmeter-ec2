@@ -53,7 +53,8 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
   `AMI_ID="[A linix based AMI, eg. ami-f95ef58a]"`
   Recommended AMI provided. Both Java and JMeter are installed by the script dynamically and are not required.
 
-  `INSTANCE_TYPE="t2.micro"`
+  `INSTANCE_TYPE="m3.medium"`
+  `micro` type instances do work and are good for developing but they are not recommended for important test runs. Performance can be slow and you risk affecting test results.
   Note. Older generation instance types require a different type of AMI (paravirtual vs. hmv).
 
   `USER="ubuntu"`
