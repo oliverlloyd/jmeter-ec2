@@ -832,6 +832,9 @@ function runcleanup() {
                                    -P $REMOTE_PORT \
                                    $USER@${hosts[$i]}:$REMOTE_HOME/$project-*.jtl \
                                    $project_home/
+      # Append the hostname
+      sed "s/$/,"${hosts[$i]}"/" $project_home/$project-$DATETIME-$i.jtl >> $project_home/$project-$DATETIME-$i-appended.jtl
+      rm $project_home/$project-$DATETIME-$i.jtl
       echo "$project_home/$project-$DATETIME-$i.jtl complete"
     done
     echo
@@ -839,8 +842,8 @@ function runcleanup() {
     # process the files into one jtl results file
     echo -n "processing results..."
     for (( i=0; i<$instance_count; i++ )) ; do
-      cat $project_home/$project-$DATETIME-$i.jtl >> $project_home/$project-$DATETIME-grouped.jtl
-      rm $project_home/$project-$DATETIME-$i.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
+      cat $project_home/$project-$DATETIME-$i-appended.jtl >> $project_home/$project-$DATETIME-grouped.jtl
+      rm $project_home/$project-$DATETIME-$i-appended.jtl # removes the individual results files (from each host) - might be useful to some people to keep these files?
     done
 
     # Sort File
