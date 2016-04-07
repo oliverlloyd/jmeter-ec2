@@ -18,14 +18,3 @@ RUNNINGTOTAL_INTERVAL="3"                   # How often the script prints runnin
 
 # REMOTE_HOSTS
 REMOTE_HOSTS="127.0.0.1"
-
-# DATABASE SETTINGS
-# If specified, then the script will import the results to the mysql database given here
-DB_HOST=""
-DB_SSH_PORT="22"
-DB_NAME=""
-DB_USER=""
-DB_PSWD=""
-DB_PEM_FILE=""
-DB_PEM_PATH=""
-DB_PEM_USER=""

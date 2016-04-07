@@ -2,7 +2,7 @@
 
 This shell script will allow you to run your local JMeter jmx files either using Amazon's EC2 service or you can provide it with a simple, comma-delimited list of hosts to use. Summary results are printed to the console as the script runs and then all result data is downloaded and concatenated to one file when the test completes ready for more detailed analysis offline.
 
-By default it will launch the required hardware using Amazon EC2 (ec2 mode) using Ubuntu AMIs, dynamically installing Java and Apache JMeter. Using AWS it is much easier and cheaper to scale your test over multiple slaves but if you need to you can also pass in a list of pre-prepared hostnames and the test load will be distributed over these instead. Using your own servers can be useful when the target server to be tested can not be easily accessed from a location external to your test network.
+By default it will launch the required hardware using Amazon EC2. Using AWS it is much easier and cheaper to scale your test over multiple slaves but if you need to you can also pass in a list of pre-prepared hostnames and the test load will be distributed over these instead. Using your own servers can be useful when the target server to be tested can not be easily accessed from a location external to your test network or you want to repeat a test iteratively.
 
 The script does not use JMeter's Distributed Mode so you do not need to adjust the test parameters to ensure even distribution of the load; the script will automatically adjust the thread counts based on how many hosts are in use. As the test is running it will collate the results from each host in real time and display an output of the Generate Summary Results listener to the screen (showing both results host by host and an aggregated view for the entire run). Once execution is complete it will download each host's jtl file and collate them all together to give a single jtl file that can be viewed using the usual JMeter listeners.
 
@@ -46,21 +46,15 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
     [percent]         - optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
     [setup]           - optional, default=TRUE. Set to "FALSE" if a pre-defined host is being used that has already been setup (had files copied to it, jmeter installed, etc.)
     [terminate]       - optional, default=TRUE. Set to "FALSE" if the instances created should not be terminated.
-    [price]           - optional, if specified spot instances will be requested at this price    
-    [env]             - optional, this is only used in db_mode where this text is written against the results
-    [release]         - optional, this is only used in db_mode where this text is written against the results
-    [comment]         - optional, this is only used in db_mode where this text is written against the results
+    [price]           - optional, if specified spot instances will be requested at this price
 
 ###Advanced Properties
 
   `AMI_ID="[A linix based AMI, eg. ami-f95ef58a]"`
-  Recommended AMI provided. Both Java and JMeter are installed by the script and are not required.
+  Recommended AMI provided. Both Java and JMeter are installed by the script dynamically and are not required.
 
   `INSTANCE_TYPE="t2.micro"`
   Note. Older generation instance types require a different type of AMI (paravirtual vs. hmv).
-
-  `INSTANCE_AVAILABILITYZONE="eu-west-1b"`
-  Should be a valid value for where you want the instances to launch.
 
   `USER="ubuntu"`
   Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'admin' etc.
