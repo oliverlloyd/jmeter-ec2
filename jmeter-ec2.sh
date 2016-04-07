@@ -884,8 +884,8 @@ function runcleanup() {
 
   # tidy up working files
   # for debugging purposes you could comment out these lines
-  if [ stat --printf='' $project_home/$DATETIME*.out 2>/dev/null ] ; then rm $project_home/$DATETIME*.out ; fi
-  if [ stat --printf='' $project_home/working* 2>/dev/null ] ; then rm $project_home/working* ; fi
+  rm $project_home/$DATETIME*.out
+  rm $project_home/working*
 
 
   echo
