@@ -56,9 +56,6 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
   `INSTANCE_TYPE="t2.micro"`
   Note. Older generation instance types require a different type of AMI (paravirtual vs. hmv).
 
-  `INSTANCE_AVAILABILITYZONE="eu-west-1b"`
-  Should be a valid value for where you want the instances to launch.
-
   `USER="ubuntu"`
   Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'admin' etc.
 

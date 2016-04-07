@@ -154,28 +154,26 @@ function runsetup() {
     if [ -z "$price" ] ; then
       echo -n "Requesting $instance_count instance(s)..."
       attempted_instanceids=(`ec2-run-instances \
-                      --key "$AMAZON_KEYPAIR_NAME" \
+                  --key "$AMAZON_KEYPAIR_NAME" \
                   -t "$INSTANCE_TYPE" \
                   -g "$INSTANCE_SECURITYGROUP" \
                   -n 1-$instance_count \
                   $vpcsettings \
-                      --region $REGION \
-                  --availability-zone \
-                  $INSTANCE_AVAILABILITYZONE $AMI_ID \
+                  --region $REGION \
+                  $AMI_ID \
                   | awk '/^INSTANCE/ {print $2}'`)
     else
       echo "Using Spot instances..."
       # create the spot instance request(s) and capture the request id(s)
       echo "Requesting $instance_count instance(s)..."
       spot_instance_request_id=(`ec2-request-spot-instances -p $price \
-              --key $AMAZON_KEYPAIR_NAME \
+                  --key $AMAZON_KEYPAIR_NAME \
                   -t $INSTANCE_TYPE \
                   -g $INSTANCE_SECURITYGROUP \
                   -n $instance_count \
                   $vpcsettings \
-              --region $REGION \
-                  --availability-zone \
-                  $INSTANCE_AVAILABILITYZONE $AMI_ID \
+                  --region $REGION \
+                  $AMI_ID \
                   | awk '/^SPOTINSTANCEREQUEST/ {print $2}'`)
       echo "Spot Instance request submitted, number of requests is: ${#spot_instance_request_id[@]}"
 
