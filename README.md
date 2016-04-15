@@ -13,7 +13,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 ## Getting Started
 ### Prerequisites
 * An Amazon ec2 account is required (unless valid hosts are specified using REMOTE_HOSTS property).
-* Amazon [EC2 Tools](http://aws.amazon.com/developertools/351/) must be [installed](http://www.robertsosinski.com/2008/01/26/starting-amazon-ec2-with-mac-os-x/).
+* [AWS CLI](https://aws.amazon.com/cli/) must be installed. See the  [userguide](http://docs.aws.amazon.com/cli/latest/userguide/) for setup information.
 * Testplans must contain a [Generate Summary Results Listener](https://jmeter.apache.org/usermanual/component_reference.html#Generate_Summary_Results). No other listeners are required.
 
 ###Setup
@@ -30,7 +30,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 
   `PEM_PATH="/Users/oliver/.ec2"`
   The directory (not the full filepath) where the Amazon PEM file is located. **Important**: No trailing '/'!
-  
+
  5. Copy your JMeter jmx file into the /jmx directory under your root project directory (Ie. myproject) and rename it to the same name as the directory. For example, if you created the directory `/testing/myproject` then you should name the jmx file `myproject.jmx`.
  6. Copy any data files that are required by your testplan to the /data sub directory.
  7. Copy any jar files that are required by your testplan to the /plugins sub directory.
@@ -42,7 +42,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 ###Advanced Usage
     percent=20 count="3" terminate="TRUE" setup="TRUE" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 
-    [count]           - optional, default=1 
+    [count]           - optional, default=1
     [percent]         - optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
     [setup]           - optional, default=TRUE. Set to "FALSE" if a pre-defined host is being used that has already been setup (had files copied to it, jmeter installed, etc.)
     [terminate]       - optional, default=TRUE. Set to "FALSE" if the instances created should not be terminated.
@@ -79,7 +79,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
   Allows the version to be chosen dynamically.
 
 ### Limitations:
-* There are [limits imposed by Amazon](http://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits_ec2) on how many instances can be run in a new account - the default is 20 instances as of Oct 2011. 
+* There are [limits imposed by Amazon](http://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits_ec2) on how many instances can be run in a new account - the default is 20 instances as of Oct 2011.
 * You cannot have jmeter variables in the testplan field `Thread Count`, this value must be numeric.
 * Testplan file paths cannot be dynamic, any jmeter variables in the filepath will be ignored.
 
