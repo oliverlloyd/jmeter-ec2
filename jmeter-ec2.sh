@@ -110,9 +110,9 @@ function check_prereqs() {
     exit
 	fi
 
-	# Check that the AMI tools are installed and accessible
-	if  ! type ec2-describe-instances &>/dev/null  ; then
-    echo "ERROR: The AMI tools do not appear to be installed or accessible from command line (tried ec2-describe-instances)."
+	# Check that awscli is installed and accessible
+	if  ! type aws &>/dev/null  ; then
+    echo "ERROR: awscli does not appear to be installed or accessible from command line (tried aws)."
     exit
 	fi
 }
@@ -148,33 +148,47 @@ function runsetup() {
     echo
 
     vpcsettings=""
-    if [ -n "$SUBNET_ID" ] ; then vpcsettings="-s $SUBNET_ID --associate-public-ip-address \"true\""; fi
+		spot_launch_specification="{
+			\"KeyName\": \"$AMAZON_KEYPAIR_NAME\",
+			\"ImageId\": \"$AMI_ID\",
+			\"InstanceType\": \"$INSTANCE_TYPE\" ,
+			\"SecurityGroupIds\": [\"$INSTANCE_SECURITYGROUP\"]
+		}"
+
+		# if subnet is specified
+    if [ -n "$SUBNET_ID" ] ; then
+			vpcsettings="--subnet-id $SUBNET_ID --associate-public-ip-address \"true\""
+			spot_launch_specification="{
+				\"KeyName\": \"$AMAZON_KEYPAIR_NAME\",
+				\"ImageId\": \"$AMI_ID\",
+				\"InstanceType\": \"$INSTANCE_TYPE\" ,
+				\"SecurityGroupIds\": [\"$INSTANCE_SECURITYGROUP\"],
+				\"SubnetId\": [\"$INSTANCE_SECURITYGROUP\"]
+			}"
+		fi
 
     # create the instance(s) and capture the instance id(s)
     if [ -z "$price" ] ; then
       echo -n "Requesting $instance_count instance(s)..."
-      attempted_instanceids=(`ec2-run-instances \
-                  --key "$AMAZON_KEYPAIR_NAME" \
-                  -t "$INSTANCE_TYPE" \
-                  -g "$INSTANCE_SECURITYGROUP" \
-                  -n 1-$instance_count \
+      attempted_instanceids=(`aws ec2 run-instances \
+                  --key-name "$AMAZON_KEYPAIR_NAME" \
+                  --instance-type "$INSTANCE_TYPE" \
+                  --security-groups "$INSTANCE_SECURITYGROUP" \
+                  --count 1:$instance_count \
                   $vpcsettings \
+                  --image-id $AMI_ID \
                   --region $REGION \
-                  $AMI_ID \
-                  | awk '/^INSTANCE/ {print $2}'`)
+                  --output text --query 'Instances[*].[InstanceId, Placement.AvailabilityZone, State.Name]'`)
     else
       echo "Using Spot instances..."
       # create the spot instance request(s) and capture the request id(s)
       echo "Requesting $instance_count instance(s)..."
-      spot_instance_request_id=(`ec2-request-spot-instances -p $price \
-                  --key $AMAZON_KEYPAIR_NAME \
-                  -t $INSTANCE_TYPE \
-                  -g $INSTANCE_SECURITYGROUP \
-                  -n $instance_count \
-                  $vpcsettings \
+      spot_instance_request_id=(`aws ec2 request-spot-instances \
+                  --spot-price $price \
+                  --instance-count $instance_count \
                   --region $REGION \
-                  $AMI_ID \
-                  | awk '/^SPOTINSTANCEREQUEST/ {print $2}'`)
+                  --launch-specification "$spot_launch_specification" \
+                  --output text --query 'SpotInstanceRequests[*].[SpotInstanceRequestId]'`)
       echo "Spot Instance request submitted, number of requests is: ${#spot_instance_request_id[@]}"
 
       status_check_count=0
@@ -184,11 +198,11 @@ function runsetup() {
       echo "Waiting for Spot instance requests to fulfill (may take a few minutes)"
       while [ "$spot_request_fulfilled_count" -ne "$instance_count" ] && [ $status_check_count -lt $status_check_limit ]
       do
-        spot_request_statuses=(`ec2-describe-spot-instance-requests --region $REGION ${spot_instance_request_id[@]} | awk '/^SPOTINSTANCESTATUS/ {print $2}'`)
-        spot_request_fulfilled_count=$(echo ${spot_request_statuses[@]} | tr ' ' '\n' | grep -c fulfilled)
+        spot_request_statuses=(`aws ec2 describe-spot-instance-requests --spot-instance-request-ids ${spot_instance_request_id[@]} --region $REGION --output text --query 'SpotInstanceRequests[*].[Status.Code]'`)
+				spot_request_fulfilled_count=$(echo ${spot_request_statuses[@]} | tr ' ' '\n' | grep -c fulfilled)
 
         # if all spot requests failed exit before status_check_limit is reached
-        spot_request_errors=(capacity-not-available capacity-oversubscribed price-too-low)
+        spot_request_errors=(canceled-before-fulfillment capacity-not-available capacity-oversubscribed price-too-low)
         for x in "${spot_request_statuses[@]}" ; do
           for i in "${spot_request_errors[@]}"; do
             if [[ "$i" = "$x" ]]; then
@@ -204,7 +218,7 @@ function runsetup() {
           for x in "${spot_request_statuses[@]}" ; do
             echo " $x"
           done
-          ec2-cancel-spot-instance-requests $(printf " %s" "${spot_instance_request_id[@]}") --region $REGION
+          aws ec2 cancel-spot-instance-requests --spot-instance-request-ids $(printf " %s" "${spot_instance_request_id[@]}") --region $REGION
           exit
         fi
 
@@ -216,7 +230,7 @@ function runsetup() {
       # create a filter for the ec2-describe-instance command, to get the instances associated with the spot requests
       spot_id_filter=""
       for x in "${spot_instance_request_id[@]}" ; do
-        spot_id_filter="$spot_id_filter -filter \"spot-instance-request-id=$x\""
+        spot_id_filter="spot-instance-request-id=$x\""
       done
       echo "Will be using this Spot ID filter to find new instances: $spot_id_filter"
 
@@ -225,7 +239,7 @@ function runsetup() {
       status_check_limit=60
       instances_ready=false
       while true; do
-        instance_describe=`ec2-describe-instances $spot_id_filter --region $REGION`
+        instance_describe=`aws ec2 describe-instances --filters $spot_id_filter --region $REGION`
         if [[ $instance_describe != *"Client.InvalidInstanceID.NotFound"* ]]; then
           instances_ready=true
         fi
@@ -235,7 +249,7 @@ function runsetup() {
           break
         fi
       done
-      attempted_instanceids=(`ec2-describe-instances $spot_id_filter --region $REGION | awk '/^INSTANCE/ {print $2}'`)
+      attempted_instanceids=(`aws ec2 describe-instances --fiters $spot_id_filter --region $REGION --output text --query 'Instances[*].[InstanceId]'`)
     fi
 
     # check to see if Amazon returned the desired number of instances as a limit is placed restricting this and we need to handle the case where
@@ -266,7 +280,7 @@ function runsetup() {
         # Update progress bar
         progressBar $countof_instanceids $count_passed
         status_check_count=$(( $status_check_count + 1))
-        count_passed=$(ec2-describe-instance-status --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCESTATUS/ {print $3}' | grep -c passed)
+        count_passed=$(aws ec2 describe-instance-status --instance-id ${attempted_instanceids[@]} --region $REGION --output text --query 'InstanceStatuses[*].[InstanceStatus.Status]' | grep -c passed)
         sleep 1
     done
     progressBar $countof_instanceids $count_passed true
@@ -280,7 +294,7 @@ function runsetup() {
       done
 
       # set hosts array
-      hosts=(`ec2-describe-instances --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
+      hosts=(`aws ec2 describe-instances --region $REGION ${attempted_instanceids[@]} | awk '/INSTANCE/ {print $4}'`)
       # echo "all hosts ready"
     else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
       original_count=$countof_instanceids
@@ -392,7 +406,7 @@ function runsetup() {
                     $LOCAL_HOME/verify.sh \
                     $LOCAL_HOME/jmeter-ec2.properties \
                     $USER@$host:$REMOTE_HOME \
-                    && echo "done" > $project_home/$DATETIME-$host-scpverify.out) &  
+                    && echo "done" > $project_home/$DATETIME-$host-scpverify.out) &
     done
 
     # check to see if the scp call is complete (could just use the wait command here...)
@@ -913,7 +927,7 @@ progressBar() {
   tasksDone=$2
   progressDone=$3
   # Calculate number of fill/empty slots in the bar
-  progress=$(echo "$progressBarWidth/$taskCount*$tasksDone" | bc -l)  
+  progress=$(echo "$progressBarWidth/$taskCount*$tasksDone" | bc -l)
   fill=$(printf "%.0f\n" $progress)
   if [ $fill -gt $progressBarWidth ]; then
     fill=$progressBarWidth
@@ -967,5 +981,3 @@ check_prereqs
 runsetup
 runtest
 runcleanup
-
-
