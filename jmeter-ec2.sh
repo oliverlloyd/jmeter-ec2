@@ -163,7 +163,7 @@ function runsetup() {
 				\"ImageId\": \"$AMI_ID\",
 				\"InstanceType\": \"$INSTANCE_TYPE\" ,
 				\"SecurityGroupIds\": [\"$INSTANCE_SECURITYGROUP\"],
-				\"SubnetId\": [\"$INSTANCE_SECURITYGROUP\"]
+				\"SubnetId\": [\"$SUBNET_ID\"]
 			}"
 		fi
 
@@ -173,12 +173,12 @@ function runsetup() {
       attempted_instanceids=(`aws ec2 run-instances \
                   --key-name "$AMAZON_KEYPAIR_NAME" \
                   --instance-type "$INSTANCE_TYPE" \
-                  --security-groups "$INSTANCE_SECURITYGROUP" \
+                  --security-group-ids "$INSTANCE_SECURITYGROUP" \
                   --count 1:$instance_count \
                   $vpcsettings \
                   --image-id $AMI_ID \
                   --region $REGION \
-                  --output text --query 'Instances[].[InstanceId, Placement.AvailabilityZone, State.Name]'`)
+                  --output text --query 'Instances[].InstanceId'`)
     else
       echo "Using Spot instances..."
       # create the spot instance request(s) and capture the request id(s)
@@ -199,7 +199,7 @@ function runsetup() {
       echo "Waiting for Spot instance requests to fulfill (may take a few minutes)"
       while [ "$spot_request_fulfilled_count" -ne "$instance_count" ] && [ $status_check_count -lt $status_check_limit ]
       do
-        spot_request_statuses=(`aws ec2 describe-spot-instance-requests --spot-instance-request-ids ${spot_instance_request_id[@]} --region $REGION --output text --query 'SpotInstanceRequests[].[Status.Code]'`)
+				spot_request_statuses=(`aws ec2 describe-spot-instance-requests --spot-instance-request-ids ${spot_instance_request_id[@]} --region $REGION --output text --query 'SpotInstanceRequests[].[Status.Code]'`)
 				spot_request_fulfilled_count=$(echo ${spot_request_statuses[@]} | tr ' ' '\n' | grep -c fulfilled)
 
         # if all spot requests failed exit before status_check_limit is reached
@@ -229,10 +229,13 @@ function runsetup() {
       done
 
       # create a filter for the ec2-describe-instance command, to get the instances associated with the spot requests
-      spot_id_filter=""
+			spot_id_filter_values=""
       for x in "${spot_instance_request_id[@]}" ; do
-        spot_id_filter="Name=spot-instance-request-id,Values=$x"
+        spot_id_filter_values+="${x},"
       done
+			# append values to filter variable and trim last comma off end of string
+			spot_id_filter="Name=spot-instance-request-id,Values=${spot_id_filter_values::${#spot_id_filter_values}-1}"
+
       echo "Will be using this Spot ID filter to find new instances: $spot_id_filter"
 
       # Instances might not be found immediatly, wait a few seconds if necessary
@@ -286,7 +289,7 @@ function runsetup() {
         # Update progress bar
         progressBar $countof_instanceids $count_passed
         status_check_count=$(( $status_check_count + 1))
-        count_passed=$(aws ec2 describe-instance-status --instance-id ${attempted_instanceids[@]} \
+        count_passed=$(aws ec2 describe-instance-status --instance-ids ${attempted_instanceids[@]} \
 				 						 --region $REGION \
 										 --output text \
 										 --query 'InstanceStatuses[].InstanceStatus.Details[].Status' | grep -c passed)
@@ -306,7 +309,8 @@ function runsetup() {
       hosts=(`aws ec2 describe-instances --instance-ids ${attempted_instanceids[@]} \
 						--region $REGION \
 						--output text \
-						--query 'Reservations[].Instances[].PublicDnsName'`)
+						--query 'Reservations[].Instances[].PublicIpAddress'`)
+
       # echo "all hosts ready"
     else # Amazon probably failed to start a host [*** NOTE this is fairly common ***] so show a msg - TO DO. Could try to replace it with a new one?
       original_count=$countof_instanceids
@@ -321,7 +325,7 @@ function runsetup() {
       hosts=(`aws ec2 describe-instances --instance-ids ${healthy_instanceids[@]} \
 						--region $REGION \
 						--output text \
-						--query 'Reservations[].Instances[].PublicDnsName'`)
+						--query 'Reservations[].Instances[].PublicIpAddress'`)
 
       if [ "${#healthy_instanceids[@]}" -eq 0 ] ; then
         countof_instanceids=0
@@ -332,7 +336,10 @@ function runsetup() {
           # attempt to terminate any running instances - just to be sure
           echo "terminating instance(s)..."
         	# We use attempted_instanceids here to make sure that there are no orphan instances left lying around
-          aws ec2 terminate-instances --instance-ids ${attempted_instanceids[@]} --region $REGION
+          aws ec2 terminate-instances --instance-ids ${attempted_instanceids[@]} \
+						--region $REGION \
+						--output text \
+						--query 'TerminatingInstances[].InstanceId'
           echo
         fi
         exit
@@ -372,7 +379,6 @@ function runsetup() {
       done
       wait
       echo "complete"
-
       echo
       echo -n "checking elastic ips..."
       for x in "${!instanceids[@]}" ; do
@@ -416,6 +422,7 @@ function runsetup() {
   # scp verify.sh
   if [ "$setup" = "TRUE" ] ; then
   	echo "copying verify.sh to $instance_count server(s)..."
+
     for host in ${hosts[@]} ; do
       (scp -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
                     -i "$PEM_PATH/$PEM_FILE" \
@@ -901,8 +908,11 @@ function runcleanup() {
       echo
       echo
       echo "terminating instance(s)..."
-	    # We use attempted_instanceids here to make sure that there are no orphan instances left lying around
-      ec2-terminate-instances --region $REGION ${attempted_instanceids[@]}
+      # We use attempted_instanceids here to make sure that there are no orphan instances left lying around
+			aws ec2 terminate-instances --instance-ids ${attempted_instanceids[@]} \
+				--region $REGION \
+				--output text \
+				--query 'TerminatingInstances[].InstanceId'
       echo
   	fi
   fi
