@@ -289,11 +289,11 @@ function runsetup() {
         # Update progress bar
         progressBar $countof_instanceids $count_passed
         status_check_count=$(( $status_check_count + 1))
-        count_passed=$(aws ec2 describe-instance-status --instance-ids ${attempted_instanceids[@]} \
+        count_passed=(`aws ec2 describe-instance-status --instance-ids ${attempted_instanceids[@]} \
 				 						 --region $REGION \
-										 --output text \
-										 --query 'InstanceStatuses[].InstanceStatus.Details[].Status' | grep -c passed)
-        sleep 1
+										 --output json \
+										 --query 'InstanceStatuses[].InstanceStatus.Details[].Status' | grep -c passed`)
+				sleep 1
     done
     progressBar $countof_instanceids $count_passed true
     echo
