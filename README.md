@@ -22,8 +22,8 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
  3. Extract the file `example-project.zip` into `~/Documents/WHERETOPUTMYSTUFF/`. You now have a template / example directory structure for your project.
  4. Edit the file jmeter-ec2.properties as below:
 
-  `INSTANCE_SECURITYGROUP="jmeter"`
-  The name or ID of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
+  `INSTANCE_SECURITYGROUP="sg-123456"`
+  The ID of your security group (or groups) created under your Amazon account. It must allow Port 22 to the local machine running this script.
 
   `PEM_FILE="euwest1"`
   Your Amazon key file.
@@ -124,7 +124,7 @@ Check [here](http://aws.amazon.com/developertools/351/) and make sure you have t
 #### Things to try if you **DO NOT** have network access
 
 **Your Security Group is not configured properly**
-The `INSTANCE_SECURITYGROUP` property needs to reference the exact name of a security group that exists in the correct region and that contains a rule that allows inbound traffic on port 22 from the machine you are running the script from, or everywhere if you are running the script remotely or just want to rule this out (be sure to reduce this scope later once you've got things working)
+The `INSTANCE_SECURITYGROUP_IDS` property needs to reference the exact ids of one or more security group that exists in the correct region and that contains a rule that allows inbound traffic on port 22 from the machine you are running the script from, or everywhere if you are running the script remotely or just want to rule this out (be sure to reduce this scope later once you've got things working)
 
 **Check local network settings**
 Often port 22 can be blocked by over-zealous local network security settings. You often see this with poor quality wifi services, the type where you have to fill out a marketing form to get access. You can sometimes get around this by using a vpn but often they block this too and then your only choice is to put down your flat white and leave.
