@@ -157,13 +157,13 @@ function runsetup() {
 
 		# if subnet is specified
     if [ -n "$SUBNET_ID" ] ; then
-			vpcsettings="--subnet-id $SUBNET_ID --associate-public-ip-address" 
+			vpcsettings="--subnet-id $SUBNET_ID --associate-public-ip-address"
 			spot_launch_specification="{
 				\"KeyName\": \"$AMAZON_KEYPAIR_NAME\",
 				\"ImageId\": \"$AMI_ID\",
 				\"InstanceType\": \"$INSTANCE_TYPE\" ,
 				\"SecurityGroupIds\": [\"$INSTANCE_SECURITYGROUP_IDS\"],
-				\"SubnetId\": [\"$SUBNET_ID\"]
+				\"SubnetId\": \"$SUBNET_ID\"
 			}"
 		fi
 
