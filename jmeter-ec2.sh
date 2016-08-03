@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # ========================================================================================
 # jmeter-ec2.sh
@@ -726,7 +726,7 @@ function runtest() {
 	start_date=$(date) # warning, epoch and start_date do not (absolutely) equal each other!
 
   echo "JMeter started at $start_date"
-  echo "===================================================================== START OF JMETER-EC2 TEST ================================================================================"
+  echo "====================== START OF JMETER-EC2 TEST ================================="
   echo "> [updates: every $sleep_interval seconds | running total: every $runningtotal_seconds seconds]"
   echo ">"
   echo "> waiting for the test to start...to stop the test while it is running, press CTRL-C"
