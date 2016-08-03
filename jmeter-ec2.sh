@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # ========================================================================================
 # jmeter-ec2.sh
@@ -68,13 +68,21 @@ fi
 
 cd $EC2_HOME
 
-# check project directry exists
+# check project directory exists
 if [ ! -d "$project_home" ] ; then
   echo "The directory $project_home does not exist."
   echo
   echo "Script exiting."
   exit
 fi
+
+function add() {
+  if [ ! -z "$1" -a ! -z "$2" ]; then
+    echo $[$1 + $2]
+  else
+    echo 0
+  fi
+}
 
 # The test has not started yet (used to decide what to do when the script stops)
 teststarted=0
@@ -718,7 +726,7 @@ function runtest() {
   # sleep_interval - how often we poll the jmeter output for results
   # this value should be the same as the Generate Summary Results interval set in jmeter.properties
   # to be certain, we read the value in here and adjust the wait to match (this prevents lots of duplicates being written to the screen)
-  sleep_interval=$(awk 'BEGIN { FS = "\=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
+  sleep_interval=$(awk 'BEGIN { FS = "=" } ; /summariser.interval/ {print $2}' $LOCAL_HOME/jmeter.properties)
   runningtotal_seconds=$(echo "$RUNNINGTOTAL_INTERVAL * $sleep_interval" | bc)
 	# $epoch is used when importing to mysql (if enabled) because we want unix timestamps, not datetime, as this works better when graphing.
 	epoch_seconds=$(date +%s)
@@ -767,11 +775,11 @@ function runtest() {
           tps_recent=${tps_recent_raw%/s} # remove the trailing '/s'
           errors_total=$(tail -10 $project_home/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
 
-          count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
-          avg_overallhosts=$(echo "$avg_overallhosts+$avg" | bc)
-          tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc)
-          tps_recent_overallhosts=$(echo "$tps_recent_overallhosts+$tps_recent" | bc)
-          errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
+          count_overallhosts=$(add $count_overallhosts $count_total)
+          avg_overallhosts=$(add $avg_overallhosts $avg)
+          tps_overallhosts=$(add $tps_overallhosts $tps_total)
+          tps_recent_overallhosts=$(add $tps_recent_overallhosts $tps_recent)
+          errors_overallhosts=$(add $errors_overallhosts $errors_total) # add the value from this host to the values from other hosts
         fi
       fi
     done #<<<"${hosts_str}" # next host
@@ -836,11 +844,11 @@ function runtest() {
     errors_total=$(tail -10 $project_home/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
 
     # running totals
-    count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
-    avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
-    tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
-    tps_recent_overallhosts=$(echo "$tps_recent_overallhosts+$tps_recent" | bc)
-    errors_overallhosts=$(echo "$errors_overallhosts+$errors_total" | bc) # add the value from this host to the values from other hosts
+    count_overallhosts=$(add $count_overallhosts $count_total) # add the value from this host to the values from other hosts
+    avg_overallhosts=$(add $avg_overallhosts $avg_total)
+    tps_overallhosts=$(add $tps_overallhosts $tps_total) # add the value from this host to the values from other hosts
+    tps_recent_overallhosts=$(add $tps_recent_overallhosts $tps_recent)
+    errors_overallhosts=$(add $errors_overallhosts $errors_total) # add the value from this host to the values from other hosts
   done
 
   # calculate averages over all hosts
