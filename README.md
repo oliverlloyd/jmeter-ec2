@@ -79,6 +79,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
   Allows the version to be chosen dynamically.
 
 ### Limitations:
+* JMeter V3 is not tested with this script.
 * There are [limits imposed by Amazon](http://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits_ec2) on how many instances can be run in a new account - the default is 20 instances as of Oct 2011.
 * You cannot have jmeter variables in the testplan field `Thread Count`, this value must be numeric.
 * Testplan file paths cannot be dynamic, any jmeter variables in the filepath will be ignored.
