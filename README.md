@@ -50,8 +50,8 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 
 ### Advanced Properties
 
-  `AMI_ID="[A linix based AMI, eg. ami-f95ef58a]"`
-  Recommended AMI provided. Both Java and JMeter are installed by the script dynamically and are not required.
+  `AMI_ID="[A linix based AMI]"`
+  Recommended AMIs are provided in the jmeter-ec2.properties file. Both Java and JMeter are installed by the script dynamically if not present.
 
   `INSTANCE_TYPE="m3.medium"`
   `micro` type instances do work and are good for developing but they are not recommended for important test runs. Performance can be slow and you risk affecting test results.
