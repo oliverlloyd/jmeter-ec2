@@ -767,11 +767,6 @@ function runtest() {
           tps_recent=${tps_recent_raw%/s} # remove the trailing '/s'
           errors_total=$(tail -10 $project_home/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
 
-          #count_overallhosts=$(add $count_overallhosts $count_total)
-          #avg_overallhosts=$(add $avg_overallhosts $avg)
-          #tps_overallhosts=$(add $tps_overallhosts $tps_total)
-          #tps_recent_overallhosts=$(add $tps_recent_overallhosts $tps_recent)
-          #errors_overallhosts=$(add $errors_overallhosts $errors_total) # add the value from this host to the values from other hosts
           count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
           avg_overallhosts=$(echo "$avg_overallhosts+$avg" | bc)
           tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc)
@@ -841,11 +836,6 @@ function runtest() {
     errors_total=$(tail -10 $project_home/$DATETIME-$host-jmeter.out | grep "Results =" | tail -1 | awk '{print $17}')
 
     # running totals
-    #count_overallhosts=$(add $count_overallhosts $count_total) # add the value from this host to the values from other hosts
-    #avg_overallhosts=$(add $avg_overallhosts $avg_total)
-    #tps_overallhosts=$(add $tps_overallhosts $tps_total) # add the value from this host to the values from other hosts
-    #tps_recent_overallhosts=$(add $tps_recent_overallhosts $tps_recent)
-    #errors_overallhosts=$(add $errors_overallhosts $errors_total) # add the value from this host to the values from other hosts
     count_overallhosts=$(echo "$count_overallhosts+$count_total" | bc) # add the value from this host to the values from other hosts
     avg_overallhosts=$(echo "$avg_overallhosts+$avg_total" | bc)
     tps_overallhosts=$(echo "$tps_overallhosts+$tps_total" | bc) # add the value from this host to the values from other hosts
