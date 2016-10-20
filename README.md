@@ -13,49 +13,49 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
 ## Getting Started
 ### Prerequisites
 * An Amazon ec2 account is required (unless valid hosts are specified using REMOTE_HOSTS property).
-* Amazon [EC2 Tools](http://aws.amazon.com/developertools/351/) must be [installed](http://www.robertsosinski.com/2008/01/26/starting-amazon-ec2-with-mac-os-x/).
+* [AWS CLI](https://aws.amazon.com/cli/) must be installed. See the  [userguide](http://docs.aws.amazon.com/cli/latest/userguide/) for setup information.
 * Testplans must contain a [Generate Summary Results Listener](https://jmeter.apache.org/usermanual/component_reference.html#Generate_Summary_Results). No other listeners are required.
 
-###Setup
+### Setup
  1. Create a project directory on your machine. For example: `~/Documents/WHERETOPUTMYSTUFF/`. This is where you store your testplan and any associated files.
  2. Download or clone all files from this repo into a suitable directory (e.g. `/usr/local/`).
  3. Extract the file `example-project.zip` into `~/Documents/WHERETOPUTMYSTUFF/`. You now have a template / example directory structure for your project.
  4. Edit the file jmeter-ec2.properties as below:
 
-  `INSTANCE_SECURITYGROUP="jmeter"`
-  The name or ID of your security group created under your Amazon account. It must allow Port 22 to the local machine running this script.
+  `INSTANCE_SECURITYGROUP="sg-123456"`
+  The ID of your security group (or groups) created under your Amazon account. It must allow Port 22 to the local machine running this script.
 
   `PEM_FILE="euwest1"`
   Your Amazon key file.
 
   `PEM_PATH="/Users/oliver/.ec2"`
   The directory (not the full filepath) where the Amazon PEM file is located. **Important**: No trailing '/'!
-  
+
  5. Copy your JMeter jmx file into the /jmx directory under your root project directory (Ie. myproject) and rename it to the same name as the directory. For example, if you created the directory `/testing/myproject` then you should name the jmx file `myproject.jmx`.
  6. Copy any data files that are required by your testplan to the /data sub directory.
  7. Copy any jar files that are required by your testplan to the /plugins sub directory.
- 8. Open a termnal window and cd to the project directory you created (eg. cd /home/username/someproject).
+ 8. Open a terminal window and cd to the project directory you created (eg. cd /home/username/someproject).
  9. Type: `count="1" ./path/to/jmeter-ec2.sh`
  Where '1' is the number of instances you wish to spread the test over. If you have provided a list of hosts using `REMOTE_HOSTS` then this value is ignored and all hosts in the list will be used.
 
 
-###Advanced Usage
+### Advanced Usage
     percent=20 count="3" terminate="TRUE" setup="TRUE" env="UAT" release="3.23" comment="my notes" ./jmeter-ec2.sh'
 
-    [count]           - optional, default=1 
+    [count]           - optional, default=1
     [percent]         - optional, default=100. Should be in the format 1-100 where 20 => 20% of threads will be run by the script.
     [setup]           - optional, default=TRUE. Set to "FALSE" if a pre-defined host is being used that has already been setup (had files copied to it, jmeter installed, etc.)
     [terminate]       - optional, default=TRUE. Set to "FALSE" if the instances created should not be terminated.
     [price]           - optional, if specified spot instances will be requested at this price
 
-###Advanced Properties
+### Advanced Properties
 
-  `AMI_ID="[A linix based AMI, eg. ami-f95ef58a]"`
-  Recommended AMI provided. Both Java and JMeter are installed by the script dynamically and are not required.
+  `AMI_ID="[A linix based AMI]"`
+  Recommended AMIs are provided in the jmeter-ec2.properties file. Both Java and JMeter are installed by the script dynamically if not present.
 
   `INSTANCE_TYPE="m3.medium"`
   `micro` type instances do work and are good for developing but they are not recommended for important test runs. Performance can be slow and you risk affecting test results.
-  Note. Older generation instance types require a different type of AMI (paravirtual vs. hmv).
+  Note: Older generation instance types require a different type of AMI (paravirtual vs. hmv).
 
   `USER="ubuntu"`
   Different AMIs start with different basic users. This value could be 'ec2-user', 'root', 'admin' etc.
@@ -64,7 +64,7 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
   The id of the subnet that the instance will belong to. So long as a [default VPC](http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/default-vpc.html) exists for your account you do not need to set this.
 
   `RUNNINGTOTAL_INTERVAL="3"`
-  How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an agraggated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
+  How often running totals are printed to the screen. Based on a count of the summariser.interval property. (If the Generate Summary Results listener is set to wait 10 seconds then every 30 (3 * 10) seconds an extra row showing an aggregated summary will be printed.) The summariser.interval property in the standard jmeter.properties file defaults to 180 seconds - in the file included with this project it is set to 15 seconds, like this we default to summary updates every 45 seconds.
 
   `REMOTE_HOSTS=""`
   If you do not wish to use ec2 you can provide a comma-separated list of pre-defined hosts.
@@ -73,13 +73,14 @@ The script does not use JMeter's Distributed Mode so you do not need to adjust t
   Specify the port sshd is running on for `REMOTE_HOSTS` or ec2. Default 22.
 
   `ELASTIC_IPS=""`
-  If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful is your test needs to pass through a firewall.
+  If using ec2, then you can also provide a comma-separated list of pre-defined elastic IPs. This is useful if your test needs to pass through a firewall.
 
   `JMETER_VERSION="apache-jmeter-2.13"`
   Allows the version to be chosen dynamically.
 
 ### Limitations:
-* There are [limits imposed by Amazon](http://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits_ec2) on how many instances can be run in a new account - the default is 20 instances as of Oct 2011. 
+* JMeter V3 is not tested with this script.
+* There are [limits imposed by Amazon](http://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits_ec2) on how many instances can be run in a new account - the default is 20 instances as of Oct 2011.
 * You cannot have jmeter variables in the testplan field `Thread Count`, this value must be numeric.
 * Testplan file paths cannot be dynamic, any jmeter variables in the filepath will be ignored.
 
@@ -110,21 +111,21 @@ If you see:
 
 You **DO NOT** have network access.
 
-####Things to try if you **DO** have network access
+#### Things to try if you **DO** have network access
 
 **File permissions on your PEM file**
 Your .pem files [need to be secure](http://stackoverflow.com/questions/1454629/aws-ssh-access-permission-denied-publickey-issue). Use `chmod 600 yourfile.pem`.
 
 **The `USER` property is not correct**
-Different AMIs and OSs expact you to log in using different users. Make sure this value is set correctly.
+Different AMIs and OSs expect you to log in using different users. Make sure this value is set correctly.
 
 **Install the latest version of the ec2-api-tools**
 Check [here](http://aws.amazon.com/developertools/351/) and make sure you have the latest version installed. Use `$ ec2-version` to check.
 
-####Things to try if you **DO NOT** have network access
+#### Things to try if you **DO NOT** have network access
 
 **Your Security Group is not configured properly**
-The `INSTANCE_SECURITYGROUP` property needs to reference the exact name of a security group that exists in the correct region and that contains a rule that allows inbound traffic on port 22 from the machine you are running the script from, or everywhere if you are running the script remotely or just want to rule this out (be sure to reduce this scope later once you've got things working)
+The `INSTANCE_SECURITYGROUP_IDS` property needs to reference the exact ids of one or more security group that exists in the correct region and that contains a rule that allows inbound traffic on port 22 from the machine you are running the script from, or everywhere if you are running the script remotely or just want to rule this out (be sure to reduce this scope later once you've got things working)
 
 **Check local network settings**
 Often port 22 can be blocked by over-zealous local network security settings. You often see this with poor quality wifi services, the type where you have to fill out a marketing form to get access. You can sometimes get around this by using a vpn but often they block this too and then your only choice is to put down your flat white and leave.
@@ -163,11 +164,11 @@ For example to get current price for t1.micro instance running Linux :
 ## Running locally with Vagrant
 [Vagrant](http://vagrantup.com) allows you to test your jmeter-ec2 scripts locally before pushing them to ec2.
 
-### Pre-requisits
+### Prerequisites
 * [Vagrant](http://vagrantup.com)
 
 ### Usage:
-Use `jmeter-ec2.properties.vagrant` as a template for local provisioning. This file is setup to use Vagrants ssh key, ports, etc.
+Use `jmeter-ec2.properties.vagrant` as a template for local provisioning. This file is set up to use Vagrant's ssh key, ports, etc.
 ```
 # backup your properties files just in case
 cp jmeter-ec2.properties jmeter-ec2.properties.bak
@@ -180,14 +181,14 @@ project="myproject" setup="TRUE" ./jmeter-ec2.sh
 ```
 
 ### Note
-* You may need to edit the `Vagrantfile` to meet any specific networking needs. See Vagrant's [networking documentation](http://docs.vagrantup.com/v2/getting-started/networking.html) for details
+* You may need to edit the `Vagrantfile` to meet any specific networking needs. See Vagrant's [networking documentation](http://docs.vagrantup.com/v2/getting-started/networking.html) for details.
 
 ## General Notes:
 ### AWS Key Pairs
-To find your key pairs goto your ec2 dashboard -> Networking and Security -> Key Pairs. Make sure this key pair is in the REGION you also set in the properties file.
+To find your key pairs go to your ec2 dashboard -> Networking and Security -> Key Pairs. Make sure this key pair is in the REGION you also set in the properties file.
 
 ### AWS Security Groups
-To create or check your EC2 security groups goto your ec2 dashboard -> security groups.
+To create or check your EC2 security groups go to your ec2 dashboard -> security groups.
 
 Create a security group (e.g. called jmeter) that allows inbound access on port 22 from the IP of the machine where you are running the script.
 
