@@ -76,14 +76,6 @@ if [ ! -d "$project_home" ] ; then
   exit
 fi
 
-function add() {
-  if [ ! -z "$1" -a ! -z "$2" ]; then
-    echo $[$1 + $2]
-  else
-    echo 0
-  fi
-}
-
 # The test has not started yet (used to decide what to do when the script stops)
 teststarted=0
 
