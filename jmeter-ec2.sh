@@ -964,7 +964,7 @@ progressBar() {
   # Percentage Calculation
   progressPercent=$(echo "100/$taskCount*$tasksDone" | bc -l)
   progressPercent=$(printf "%0.2f\n" $progressPercent)
-  if [ $(echo "$progressPercent>100" | bc) -gt 0 ]; then
+  if [[ -n "${progressPercent}" && $(echo "$progressPercent>100" | bc) -gt 0 ]]; then
     progressPercent="100.00"
   fi
 
