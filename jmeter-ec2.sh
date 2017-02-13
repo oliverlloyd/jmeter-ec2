@@ -653,6 +653,32 @@ function runsetup() {
       echo -n "done...."
     fi
 
+    # scp system.properties
+    if [ -r $LOCAL_HOME/system.properties ] ; then # don't try to upload this optional file if it is not present
+      echo -n "system.properties.."
+      for host in ${hosts[@]} ; do
+          (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                        -i "$PEM_PATH/$PEM_FILE" -P $REMOTE_PORT \
+                                        $LOCAL_HOME/system.properties \
+                                        $USER@$host:$REMOTE_HOME/$JMETER_VERSION/bin/) &
+      done
+      wait
+      echo -n "done...."
+    fi
+
+    # scp keystore
+    if [ -r $LOCAL_HOME/keystore.jks ] ; then # don't try to upload this optional file if it is not present
+      echo -n "keystore.jks.."
+      for host in ${hosts[@]} ; do
+          (scp -q -C -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                                        -i "$PEM_PATH/$PEM_FILE" -P $REMOTE_PORT \
+                                        $LOCAL_HOME/keystore.jks \
+                                        $USER@$host:$REMOTE_HOME) &
+      done
+      wait
+      echo -n "done...."
+    fi
+
     # scp jmeter execution file
     if [ -r $LOCAL_HOME/jmeter ] ; then # don't try to upload this optional file if it is not present
       echo -n "jmeter execution file..."
